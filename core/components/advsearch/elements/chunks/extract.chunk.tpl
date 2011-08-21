@@ -1,0 +1,1 @@
+<p class="advsea-extract">[[+extract]]</p>

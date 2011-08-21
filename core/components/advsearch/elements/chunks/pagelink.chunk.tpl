@@ -1,0 +1,1 @@
+<span class="advsea-page"><a href="[[+link]]">[[+text]]</a></span>

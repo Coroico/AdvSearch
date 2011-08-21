@@ -1,0 +1,101 @@
+/*
+css style for AdvSearch
+- common or non-ajax tags are prefixed by advsea_
+- tags for ajax mode are prefixed by aadvsea_
+*/
+
+/* tags searchform
+-------------------------------------------------------------- */
+form.advsea-search-form fieldset{
+	padding: 10px 10px;
+	margin: 10px 10px;
+	border: 1px solid #BFD3C7;
+}
+form.advsea-search-form  #as0_search{
+	width: 300px;
+}
+form.advsea-search-form a.advsea-helplink {
+  padding: 0 20px 0 0;
+  background: url(images/help.png) 0 2px no-repeat; 
+  font-size: 16px;
+  text-decoration: none;  
+  border: 0;
+  cursor: pointer;
+}
+a.advsea-helplink  span{
+  display: none;
+}
+
+form.advsea-search-form div.advsea-helpwindow{
+  position:absolute;
+  left:0;
+  top:0;
+  width:400px;
+  height:200px;
+  display:none;
+  z-index:9999;
+  padding:20px;
+  background: black;
+  color: white;
+}
+
+/* tags results
+-------------------------------------------------------------- */
+
+.advsea-previous a, .advsea-next a{
+  color: blue;
+  margin: 0 10px;
+}
+
+div.advsea-paging0{
+  font-size: 1em;
+  color: red;
+  width: 100%;
+  margin: 15px 0;
+}
+
+div.advsea-paging, div.advsea-paging1{
+  font-size: 1em;
+  color: red;
+  width: 200px;
+  margin: 15px auto;
+}
+
+div.advsea-result h3{
+  font-size: 1em;
+  margin-top: 15px;
+}
+
+div.advsea-result a{
+  font-size: 1em;
+  color: blue;
+}
+div.advsea-result div{
+  margin: 10px 0;
+}
+div.advsea-result div.imgArticle{
+  margin: 0 0 5px 10px;
+  float: right;
+}
+.advsea-highlight {
+  font-weignt: bold;
+  font-style: italic;
+}
+.advsea-highlight-1{color: #EA4E15}
+.advsea-highlight-2{color: #1A1ADD}
+.advsea-highlight-3{color: #7B09F4}
+.advsea-highlight-4{color: #F48309}
+.advsea-highlight-5{color: #935A1D}
+.advsea-highlight-6{color: #628439}
+
+/*------------- for simple search */
+.sisea-highlight {
+  font-weignt: bold;
+  font-style: italic;
+}
+.sisea-highlight-1{color: #EA4E15}
+.sisea-highlight-2{color: #1A1ADD}
+.sisea-highlight-3{color: #7B09F4}
+.sisea-highlight-4{color: #F48309}
+.sisea-highlight-5{color: #935A1D}
+.advsea-highlight-6{color: #628439}

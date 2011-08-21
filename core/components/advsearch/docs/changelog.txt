@@ -1,0 +1,12 @@
+Changelog for AdvSearch
+
+AdvSearch 1.0.0 RC2
+-------------------
+- Paging type 0
+- QueryHook 1.1
+- Search in custom packages
+
+
+AdvSearch 1.0.0 RC1
+-------------------
+Initial Version
