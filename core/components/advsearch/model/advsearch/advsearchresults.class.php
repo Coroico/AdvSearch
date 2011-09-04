@@ -225,7 +225,7 @@ class AdvSearchResults extends AdvSearchUtil{
         $zendResults = $this->doEngineSearch('zend');
 
         // get results from Mysql database
-        $mysqlResults = $this->doMysqlSearch('mysql');
+        $mysqlResults = $this->doEngineSearch('mysql');
 
 		// merge results (zend lucene first then mysql), remove doubles
         $results = array_unique(array_merge($zendResults,$mysqlResults));
