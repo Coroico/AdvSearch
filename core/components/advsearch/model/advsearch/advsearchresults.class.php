@@ -83,7 +83,7 @@ class AdvSearchResults extends AdvSearchUtil{
         $hits = array();
 	    $c = $this->initSearch($engine, $lstIds, $hits);
 
-		if ($lstIds){
+		if ($engine == 'mysql' || $lstIds){
 			//=============================  add selected modResource fields (docFields)
 			$c->query['distinct'] = 'DISTINCT';
             $c->select($this->modx->getSelectColumns('modResource','modResource','',$this->mainFields));
