@@ -674,7 +674,7 @@ class AdvSearchResults extends AdvSearchUtil{
 			else $this->config['withTVs'] = $lstWithTVs;
 
 			// remove doubles between withTVs and includeTVs parameters
-			$this->tvFields = array_diff(array_merge($this->tvWhereFields, $this->tvFields), $this->tvFields);
+			$this->tvFields = array_unique(array_merge($this->tvWhereFields, $this->tvFields));
 		}
 
         // &ids [ comma separated list of Ids | '' ] - ids or primary keys for custom package
