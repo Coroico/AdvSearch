@@ -99,7 +99,7 @@ class AdvSearchForm extends AdvSearchUtil{
 
         // add the external css and js files
         // add newSearch css file
-        $this->modx->regClientCss("assets/components/advsearch/css/advsearch.css");
+        $this->modx->regClientCss($this->modx->getOption('assets_url')."components/advsearch/css/advsearch.css");
 
         // include or not the jQuery library (required for help, clear default text, ajax mode)
         if ($this->config['help'] || $this->config['clearDefault'] || $this->config['withAjax']) {
@@ -122,7 +122,7 @@ class AdvSearchForm extends AdvSearchUtil{
 
         if ($this->config['withAjax']) {
             // include the advsearch js file in the header
-            $this->modx->regClientStartupScript('assets/components/advsearch/js/advsearch.min.js');
+            $this->modx->regClientStartupScript($this->modx->getOption('assets_url').'components/advsearch/js/advsearch.min.js');
 
             // add ajaxResultsId and liveSearch mode in js header
             $jsHeaderArray['asid'] = $this->config['asId'];
