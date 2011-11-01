@@ -19,7 +19,7 @@ class AdvSearchForm extends AdvSearchUtil{
     }
 
 	/**
-     * Output the newSearch form
+     * Output the advSearch form
 	 *
      * @access public
      * @return string output as string
@@ -55,7 +55,7 @@ class AdvSearchForm extends AdvSearchUtil{
                     'pagetitle' => 'AdvSearch help'
                 ));
             }
-            if ($resource) {   // newSearchHelp handler exists
+            if ($resource) {   // advSearchHelp handler exists
                 $helpHandler = $resource->get('id');
                 $placeholders = array(
                     'asId' => $this->config['asId'],
@@ -98,8 +98,8 @@ class AdvSearchForm extends AdvSearchUtil{
         }
 
         // add the external css and js files
-        // add newSearch css file
-        $this->modx->regClientCss("assets/components/advsearch/css/advsearch.css");
+        // add advSearch css file
+        $this->modx->regClientCss($this->config['assetsUrl'].'css/advsearch.css');
 
         // include or not the jQuery library (required for help, clear default text, ajax mode)
         if ($this->config['help'] || $this->config['clearDefault'] || $this->config['withAjax']) {
@@ -122,7 +122,7 @@ class AdvSearchForm extends AdvSearchUtil{
 
         if ($this->config['withAjax']) {
             // include the advsearch js file in the header
-            $this->modx->regClientStartupScript('assets/components/advsearch/js/advsearch.min.js');
+            $this->modx->regClientStartupScript($this->config['assetsUrl'].'js/advsearch.min.js');
 
             // add ajaxResultsId and liveSearch mode in js header
             $jsHeaderArray['asid'] = $this->config['asId'];
@@ -179,7 +179,7 @@ EOD;
         $help = (int) $this->modx->getOption('help',$this->config,1);
         $this->config['help'] = ($help >=0) ? $help : 1;
 
-        // &jsSearchForm - [ url | $assetsUrl . 'js/newSearchForm.min.js' ]
+        // &jsSearchForm - [ url | $assetsUrl . 'js/advSearchForm.min.js' ]
         $this->config['jsSearchForm'] = $this->modx->getOption('jsSearchForm',$this->config,$this->config['assetsUrl'].'js/advsearchform.min.js');
 
         // &landing  [ int id of a document | 0 ]

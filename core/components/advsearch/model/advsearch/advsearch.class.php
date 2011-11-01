@@ -160,7 +160,7 @@ class AdvSearch extends AdvSearchUtil{
 	 *
      * @access private
 	 * @param string $type Hook type
-	 * @return AdvSearchHooks Returns newSearchHooks object
+	 * @return AdvSearchHooks Returns advSearchHooks object
 	 */
     public function getHooks($type) {
         if (!empty($this->config[$type])) {
@@ -281,8 +281,8 @@ class AdvSearch extends AdvSearchUtil{
 		$displayedFields = array_merge($asr->mainFields, $asr->tvFields, $asr->joinedFields);
 		$this->checkDisplayParams($displayedFields);
 
-        // add newSearch css file
-        $this->modx->regClientCss("assets/components/advsearch/css/advsearch.css");
+        // add advSearch css file
+        $this->modx->regClientCss($this->config['assetsUrl'].'css/advsearch.css');
 
 		// results header
 		$infoOutput = $this->getResultInfo($this->searchString, $resultsCount);

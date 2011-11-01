@@ -6,7 +6,7 @@
  * @author		Coroico
  * @copyright 	Copyright (c) 2011 by Coroico <coroico@wangba.fr>
  *
- * @tutorial	Some useful methods shared by newSearch classes
+ * @tutorial	Some useful methods shared by advSearch classes
  *
  */
 // AdvSearch version
@@ -36,11 +36,11 @@ abstract class AdvSearchUtil {
         $this->config =& $config;
 
         // path and url
-        $corePath = $this->modx->getOption('newSearch.core_path',null,$this->modx->getOption('core_path').'components/advsearch/');
-        $assetsUrl = $this->modx->getOption('newSearch.assets_url',null,$this->modx->getOption('assets_url').'components/advsearch/');
+        $corePath = $this->modx->getOption('advSearch.core_path',null,$this->modx->getOption('core_path').'components/advsearch/');
+        $assetsUrl = $this->modx->getOption('advSearch.assets_url',null,$this->modx->getOption('assets_url').'components/advsearch/');
         $this->config = array_merge(array(
             'corePath' => $corePath,
-            'assetsUrl' => $assetsUrl,
+            'assetsUrl' => ltrim($assetsUrl,'/'),
             'chunksPath' => $corePath.'elements/chunks/',
             'modelPath' => $corePath.'model/',
         ),$config);
@@ -96,7 +96,7 @@ abstract class AdvSearchUtil {
 			return false;
 		}
 
-        // &asId - [Unique id for newSearch instance | 'as0' ]
+        // &asId - [Unique id for advSearch instance | 'as0' ]
         $this->config['asId'] = $this->modx->getOption('asId',$this->config,'as0');
 
         // &method [ 'POST' | 'GET' ]

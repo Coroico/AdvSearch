@@ -35,7 +35,7 @@ class AdvSearchHooks {
     public $queryHook;
 
     /**
-     * The constructor for the newSearchHooks class
+     * The constructor for the advSearchHooks class
      *
      * @param AdvSearchResults &$search A reference to the AdvSearchResults class instance.
      * @param array $config Optional. An array of configuration parameters.
