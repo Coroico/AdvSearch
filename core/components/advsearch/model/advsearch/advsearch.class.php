@@ -139,7 +139,7 @@ class AdvSearch extends AdvSearchUtil{
 			// load the zend lucene library
 			require_once $this->config['libraryPath'].'Zend/Search/Lucene.php';
 			// parse query
-			$searchQuery = Zend_Search_Lucene_Search_QueryParser::parse($searchString);
+			$searchQuery = Zend_Search_Lucene_Search_QueryParser::parse($searchString,$this->config['charset']);
 			// valid maxwords and minchars
 			$valid = $this->validQuery($searchQuery, true, $msgerr);
 			if (!$valid) return false;
