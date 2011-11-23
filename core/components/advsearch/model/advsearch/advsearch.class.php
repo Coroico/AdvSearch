@@ -46,7 +46,7 @@ class AdvSearch extends AdvSearchUtil{
 				else $this->offset = 0;
 
                 // The first time display or not results
-                $init = isset($_REQUEST['asId']) ? 'all' : $this->config['init'];
+                $init = (isset($_REQUEST['asId']) || isset($_REQUEST['sub'])) ? 'all' : $this->config['init'];
                 if ($init == 'all') {
                     $asContext = array(
                         'searchString' => $this->searchString,
