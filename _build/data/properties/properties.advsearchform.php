@@ -13,8 +13,26 @@ global $modx;
 
 $properties = array(
 
-// &addJQuery - [1 | 0]  (optional - ajax mode)
-// Set this to 1 if you would like to include or not the jQuery library in the header of your pages automatically
+// &addCss - [0 | 1 | 2]  (optional - ajax mode)
+// Set 0 if you wouldn't like to include the default css file
+// Otherwise set 1 to include the default file in the header of your pages automatically
+// Default: 1
+    array(
+        'name' => 'addCss',
+        'desc' => 'advsearch.advsearchform_addCss_desc',
+        'type' => 'list',
+        'options' => array(
+            array('text' => 'No','value' => 0),
+            array('text' => 'Yes','value' => 1),
+        ),
+        'value' => 1,
+        'lexicon' => 'advsearch:properties',
+    ),
+
+// &addJQuery - [0 | 1 | 2]  (optional - ajax mode)
+// Set 0 if you wouldn't like to include the jquery library
+// Otherwise set 1 to include the jquery library before the closing HEAD tag of your pages automatically
+// Or 2 to include the jquery library before the closing closing BODY tag of your pages automatically
 // Default: 1
     array(
         'name' => 'addJQuery',
@@ -22,7 +40,26 @@ $properties = array(
         'type' => 'list',
         'options' => array(
             array('text' => 'No','value' => 0),
-            array('text' => 'Yes','value' => 1),
+            array('text' => 'Before closing HEAD tag','value' => 1),
+            array('text' => 'Before closing BODY tag','value' => 2),
+        ),
+        'value' => 1,
+        'lexicon' => 'advsearch:properties',
+    ),
+
+// &addJs - [0 | 1 | 2]  (optional)
+// Set 0 if you wouldn't like to include the js scripts manually
+// Otherwise set 1 to include the scripts before the closing HEAD tag of your pages automatically
+// Or 2 to include the scripts before the closing closing BODY tag of your pages automatically
+// Default: 1
+    array(
+        'name' => 'addJs',
+        'desc' => 'advsearch.advsearchform_addJs_desc',
+        'type' => 'list',
+        'options' => array(
+            array('text' => 'No','value' => 0),
+            array('text' => 'Before closing HEAD tag','value' => 1),
+            array('text' => 'Before closing BODY tag','value' => 2),
         ),
         'value' => 1,
         'lexicon' => 'advsearch:properties',
@@ -113,13 +150,13 @@ $properties = array(
 
 // &jsJQuery - [ Location of the jQuery javascript library ]
 // Url where is located the jquery javascript library
-// Default: 'assets/components/advsearch/js/jquery-1.5.1.min.js'
+// Default: 'assets/components/advsearch/js/jquery-1.7.1.min.js'
     array(
         'name' => 'jsJQuery',
         'desc' => 'advsearch.advsearchform_jsJQuery_desc',
         'type' => 'textfield',
         'options' => '',
-        'value' => 'assets/components/advsearch/js/jquery-1.5.1.min.js',
+        'value' => 'assets/components/advsearch/js/jquery-1.7.1.min.js',
         'lexicon' => 'advsearch:properties',
     ),
 
@@ -210,6 +247,25 @@ $properties = array(
         'type' => 'textfield',
         'options' => '',
         'value' => 'AdvSearchForm',
+        'lexicon' => 'advsearch:properties',
+    ),
+
+// &urlScheme - [ -1 | full | abs | http | https ]  (optional)
+// indicates in what format the URL is generated.
+// -1, full, abs, http, https
+// Default: -1 (URL is relative to site_url)
+    array(
+        'name' => 'urlScheme',
+        'desc' => 'advsearch.advsearchform_urlScheme_desc',
+        'type' => 'list',
+        'options' => array(
+            array('text' => 'relative to site_url','value' => -1),
+            array('text' => 'prepended with site_url from config','value' => 'full'),
+            array('text' => 'prepended with base_url from config','value' => 'abs'),
+            array('text' => 'absolute url, forced to http scheme','value' => 'http'),
+            array('text' => 'absolute url, forced to https scheme','value' => 'https')
+        ),
+        'value' => -1,
         'lexicon' => 'advsearch:properties',
     ),
 

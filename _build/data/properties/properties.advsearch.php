@@ -13,8 +13,8 @@ global $modx;
 
 $properties = array(
 
-// &asId - [Unique id for newSearch instance | 'advsea' ]  (optional)
-// this allows to distinguish several newSearch instances on the same page
+// &asId - [Unique id for AdvSearch instance | 'advsea' ]  (optional)
+// this allows to distinguish several AdvSearch instances on the same page
 // Any combination of characters a-z, underscores, and numbers 0-9
 // This is case sensitive. Default = 'as0'
 // With ajax mode, the first snippet call of the page shouldn't use the fsId parameter
@@ -68,7 +68,7 @@ $properties = array(
 // Default: 0 - no logs
     array(
         'name' => 'debug',
-        'desc' => 'advsearch.advsearchform_debug',
+        'desc' => 'advsearch.advsearch_debug',
         'type' => 'numberfield',
         'options' => array(
             array('text' => 'No','value' => 0),
@@ -102,14 +102,34 @@ $properties = array(
         'lexicon' => 'advsearch:properties',
     ),
 
+// &effect - [ 'basic' | 'showfade' | 'slidefade' ]  (optional)
+// effect name to use to display the window of results (mode ajax)
+// Default: 'basic'
+    array(
+        'name' => 'effect',
+        'desc' => 'advsearch.advsearch_effect_desc',
+        'type' => 'list',
+        'options' => array(
+            array('text' => 'basic','value' => 'basic'),
+            array('text' => 'showfade','value' => 'showfade'),
+            array('text' => 'slidefade','value' => 'slidefade'),
+        ),
+        'value' => 'basic',
+        'lexicon' => 'advsearch:properties',
+    ),
+	
 // &engine - [ 'mysql' | 'zend' | 'all' ]  (optional)
 // Search engine selected
 // Default: 'mysql'
     array(
         'name' => 'engine',
         'desc' => 'advsearch.advsearch_engine_desc',
-        'type' => 'textfield',
-        'options' => '',
+        'type' => 'list',
+        'options' => array(
+            array('text' => 'mysql','value' => 'mysql'),
+            array('text' => 'zend','value' => 'zend'),
+            array('text' => 'all','value' => 'all'),
+        ),
         'value' => 'mysql',
         'lexicon' => 'advsearch:properties',
     ),
@@ -143,7 +163,7 @@ $properties = array(
 // Default: 'Extract'
     array(
         'name' => 'extractTpl',
-        'desc' => 'The chunk that will be used to wrap each extract.',
+        'desc' => 'advsearch.advsearch_extractTpl_desc',
         'type' => 'textfield',
         'options' => '',
         'value' => 'Extract',
@@ -340,6 +360,18 @@ $properties = array(
         'lexicon' => 'advsearch:properties',
     ),
 
+// &moreResultsTpl  - [ chunk name | 'MoreResults' ] (optional)
+// The chunk to use for the "more results" link. Used with ajax mode
+// Default: MoreResults
+    array(
+        'name' => 'moreResultsTpl',
+        'desc' => 'advsearch.advsearch_moreResultsTpl_desc',
+        'type' => 'textfield',
+        'options' => '',
+        'value' => 'MoreResults',
+        'lexicon' => 'advsearch:properties',
+    ),
+	
 // &offsetIndex - [ string | 'offset' ] (optional)
 // The name of the offset parameter that the search will use.
 // Default: 'offset'
@@ -378,22 +410,27 @@ $properties = array(
         'lexicon' => 'advsearch:properties',
     ),
 	
-// &pagingType  - [ 0 | 1 ] (optional)
+// &pagingType  - [ 0 | 1 | 2 ] (optional)
 // Type of pagination.
-// 0 : Result pages: 1 | 2 | 3 ...
+// 0 : no pagination
 // 1 : Previous 6-10/13 Next
+// 2 : Result pages: 1 | 2 | 3 ...
 // default : 1
     array(
         'name' => 'pagingType',
         'desc' => 'advsearch.advsearch_pagingType_desc',
-        'type' => 'numberfield',
-        'options' => '',
+        'type' => 'list',
+        'options' => array(
+            array('text' => 'No pagination','value' => 0),
+            array('text' => 'Paging type 1','value' => 1),
+            array('text' => 'Paging type 2','value' => 2),
+        ),
         'value' => 1,
         'lexicon' => 'advsearch:properties',
     ),
 
 // &pageTpl  - [ chunk name | 'PageLink' ] (optional)
-// The chunk to use for a pagination link. Used by paging0 type
+// The chunk to use for a pagination link. Used by paging type 2
 // Default: PageLink
     array(
         'name' => 'pageTpl',
@@ -401,18 +438,6 @@ $properties = array(
         'type' => 'textfield',
         'options' => '',
         'value' => 'PageLink',
-        'lexicon' => 'advsearch:properties',
-    ),
-
-// &paging0Tpl  - [ chunk name | 'Paging0' ] (optional)
-// The chunk to use for the paging type 0
-// Default: Paging0
-    array(
-        'name' => 'paging0Tpl',
-        'desc' => 'advsearch.advsearch_paging0Tpl_desc',
-        'type' => 'textfield',
-        'options' => '',
-        'value' => 'Paging0',
         'lexicon' => 'advsearch:properties',
     ),
 
@@ -425,6 +450,18 @@ $properties = array(
         'type' => 'textfield',
         'options' => '',
         'value' => 'Paging1',
+        'lexicon' => 'advsearch:properties',
+    ),
+
+// &paging2Tpl  - [ chunk name | 'Paging2' ] (optional)
+// The chunk to use for the paging type 2
+// Default: Paging2
+    array(
+        'name' => 'paging2Tpl',
+        'desc' => 'advsearch.advsearch_paging2Tpl_desc',
+        'type' => 'textfield',
+        'options' => '',
+        'value' => 'Paging2',
         'lexicon' => 'advsearch:properties',
     ),
 
@@ -532,15 +569,21 @@ $properties = array(
         'lexicon' => 'advsearch:properties',
     ),
 
-// &urlScheme - [ chunk name | 'AdvSearchResult' ]  (optional)
+// &urlScheme - [ -1 | full | abs | http | https ]  (optional)
 // indicates in what format the URL is generated.
-// -1, 0, 1, full, abs, http, https
+// -1, full, abs, http, https
 // Default: -1 (URL is relative to site_url)
     array(
         'name' => 'urlScheme',
         'desc' => 'advsearch.advsearch_urlScheme_desc',
-        'type' => 'numfield',
-        'options' => '',
+        'type' => 'list',
+        'options' => array(
+            array('text' => 'relative to site_url','value' => -1),
+            array('text' => 'prepended with site_url from config','value' => 'full'),
+            array('text' => 'prepended with base_url from config','value' => 'abs'),
+            array('text' => 'absolute url, forced to http scheme','value' => 'http'),
+            array('text' => 'absolute url, forced to https scheme','value' => 'https')
+        ),
         'value' => -1,
         'lexicon' => 'advsearch:properties',
     ),

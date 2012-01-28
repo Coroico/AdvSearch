@@ -1,5 +1,23 @@
 Changelog for AdvSearch
 
+AdvSearch 1.0.0 pl2
+-------------------
+- "Previous", "Next", "Server Elapsed time" lexicon strings added for an easy localisation
+
+- bug fixing
+#11 syntax error, unexpected with French help file
+
+
+AdvSearch 1.0.0 pl
+-------------------
+- Ajax mode with faceted search
+- QueryHook 1.2 with MATCH (full word) and REGEXP operator (with pattern)
+- PostHook
+- FieldPotency ordering
+- Css and js disabling features
+- French lexicon added
+
+
 AdvSearch 1.0.0 RC2
 -------------------
 - Paging type 0

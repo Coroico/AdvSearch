@@ -1,1 +1,1 @@
-<div id="[[+asId]]_reswin"></div>
+<div id="[[+asId]]_advsea-reswin" class="advsea-reswin"></div>

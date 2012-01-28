@@ -2,7 +2,7 @@
 /**
  * AdvSearch
  *
- * 
+ *
  * AdvSearch is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
  * Software Foundation; either version 2 of the License, or (at your option) any
@@ -44,3 +44,8 @@ $_lang['advsearch.help_title'] = 'More information about advanced search';
 $_lang['advsearch.invalid_query'] = 'Inconsistent or invalid query';
 $_lang['advsearch.maxwords'] = 'Maximum number of words for searching: [[+maxwords]]';
 $_lang['advsearch.minchars'] = 'Search with "[[+minterm]]" is invalid. Minimum number of characters allowed for a search term: [[+minchars]] ';
+$_lang['advsearch.more_results'] = 'Show more results';
+$_lang['advsearch.goto_page'] = 'Go to page [[+text]]';
+$_lang['advsearch.previous'] = 'Previous';
+$_lang['advsearch.next'] = 'Next';
+$_lang['advsearch.elapsed_time'] = 'Server elapsed time: ';

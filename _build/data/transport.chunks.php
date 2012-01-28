@@ -67,9 +67,9 @@ $chunks[4]->fromArray(array(
 $chunks[5]= $modx->newObject('modChunk');
 $chunks[5]->fromArray(array(
     'id' => 5,
-    'name' => 'Paging0',
-    'description' => 'Paging type 0 for AdvSearch',
-    'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/paging0.chunk.tpl'),
+    'name' => 'Paging2',
+    'description' => 'Paging type 2 for AdvSearch',
+    'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/paging2.chunk.tpl'),
     'properties' => '',
 ),'',true,true);
 
@@ -115,6 +115,15 @@ $chunks[10]->fromArray(array(
     'name' => 'ResultsWindow',
     'description' => 'Div section to set the ajax window of results',
     'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/resultswindow.chunk.tpl'),
+    'properties' => '',
+),'',true,true);
+
+$chunks[11]= $modx->newObject('modChunk');
+$chunks[11]->fromArray(array(
+    'id' => 11,
+    'name' => 'MoreResults',
+    'description' => 'More results link of the ajax window of results',
+    'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/moreresults.chunk.tpl'),
     'properties' => '',
 ),'',true,true);
 

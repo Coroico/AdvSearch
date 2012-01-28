@@ -4,7 +4,7 @@
  *
  * @package 	AdvSearch
  * @author		Coroico
- * @copyright 	Copyright (c) 2011 by Coroico <coroico@wangba.fr>
+ * @copyright 	Copyright (c) 2012 by Coroico <coroico@wangba.fr>
  *
  * @tutorial	Class to get search results
  *
@@ -19,8 +19,9 @@ class AdvSearchResults extends AdvSearchUtil{
     public $joinedFields = array();
     public $tvFields = array();
 
-    public $results = array();
     public $resultsCount = 0;
+    public $results = array();
+    public $idResults = array();
 
 	protected $offset = 0;
     protected $queryHook = null;
@@ -28,7 +29,6 @@ class AdvSearchResults extends AdvSearchUtil{
 	protected $sortbyClass = array();
 	protected $sortbyField = array();
 	protected $sortbyDir = array();
-    protected $lstIdResults = '';
 
 	protected $mainWhereFields = array();
 	protected $joinedWhereFields = array();
@@ -47,12 +47,6 @@ class AdvSearchResults extends AdvSearchUtil{
 		$this->searchQuery = $asContext['searchQuery'];
 		$this->offset = $asContext['offset'];
         $this->queryHook = $asContext['queryHook'];
-
-		// check a possible empty search string without any filters
-		if (empty($this->searchString) && ($this->config['init'] != 'all')) {
-			$noFilters = ((empty($this->queryHook['andConditions'])) && (empty($this->queryHook['stmt'])));
-			if ($noFilters) return $this->results; // empty array of results
-		}
 
 		$this->checkResultsParams();
 
@@ -80,10 +74,11 @@ class AdvSearchResults extends AdvSearchUtil{
      public function doEngineSearch($engine) {
         // initialise the search - get relevant ids and hits
         $lstIds = '';
+		$this->results = array();
         $hits = array();
 	    $c = $this->initSearch($engine, $lstIds, $hits);
 
-		if ($lstIds){
+		if ($engine == 'mysql' || $lstIds){
 			//=============================  add selected modResource fields (docFields)
 			$c->query['distinct'] = 'DISTINCT';
             $c->select($this->modx->getSelectColumns('modResource','modResource','',$this->mainFields));
@@ -151,7 +146,7 @@ class AdvSearchResults extends AdvSearchUtil{
 			$fields = array_intersect($this->sortbyField, $this->mainFields);
 			if (count($fields)){
 				foreach($fields as $field) {
-					$classfield = $this->modx->escape($this->sortbyClass["{$field}"]).'.'.$this->modx->escape($field);
+					$classfield = $this->sortbyClass["{$field}"].$this->modx->escape($field);
 					$dir = $this->sortbyDir["{$field}"];
 					$c->sortby($classfield,$dir);
 				}
@@ -170,8 +165,9 @@ class AdvSearchResults extends AdvSearchUtil{
 					//============================= add query limits
 					$limit = $this->config['perPage'];
 					// offset,limit relevant only when results are sorted by fields from docFields (tvs and score excluded)
+					// If postHook is required we don't paginate the results
 					$offsetLimitSet = (count(array_intersect($this->sortbyField, $this->mainFields)) == count($this->sortbyField));
-					if ($offsetLimitSet) $c->limit($limit, $this->offset);
+					if ($offsetLimitSet && empty($this->config['postHook'])) $c->limit($limit, $this->offset);
 
 					// debug mysql query
 					if ($this->dbg) $this->modx->log(modX::LOG_LEVEL_DEBUG, 'Final select: '.$this->niceQuery($c),'','doEngineSearch');
@@ -183,7 +179,7 @@ class AdvSearchResults extends AdvSearchUtil{
 					$this->results = $this->appendTVsFields($collection);
 
 					//============================= add score field (sortby)
-					$this->results = $this->addScoreField($engine, $this->results, null);
+					$this->results = $this->addScoreField($engine, $this->results, $hits);
 
 					//============================= sort results (sortby)
 					$this->results = $this->sortSearchResults($this->results);
@@ -191,7 +187,7 @@ class AdvSearchResults extends AdvSearchUtil{
 					//============================= set a subset (offset, perPage)
 					// offset,limit relevant only when results are sorted by fields different from docFields like tv and score.
 					$offsetLimitSet = (count(array_intersect($this->sortbyField, $this->mainFields)) != count($this->sortbyField));
-					if ($offsetLimitSet) $this->results = array_slice($this->results,$this->offset,$this->config['perPage']);
+					if ($offsetLimitSet && empty($this->config['postHook'])) $this->results = array_slice($this->results,$this->offset,$this->config['perPage']);
 
 					//============================= prepare final results
 					$this->results = $this->prepareResults($this->results);
@@ -206,7 +202,7 @@ class AdvSearchResults extends AdvSearchUtil{
 				if ($this->dbg) $this->modx->log(modX::LOG_LEVEL_DEBUG, 'Number of results before pagination: '.$this->resultsCount,'','doEngineSearch');
 
 				//============================= set a subset (offset, perPage)
-				$this->results = array_slice($this->results,$this->offset,$this->config['perPage']);
+				if (empty($this->config['postHook'])) $this->results = array_slice($this->results,$this->offset,$this->config['perPage']);
 
 				//============================= prepare final results
 				$this->results = $this->prepareResults($this->results);
@@ -225,11 +221,12 @@ class AdvSearchResults extends AdvSearchUtil{
         $zendResults = $this->doEngineSearch('zend');
 
         // get results from Mysql database
-        $mysqlResults = $this->doMysqlSearch('mysql');
+        $mysqlResults = $this->doEngineSearch('mysql');
 
-		// merge results (zend lucene first then mysql), remove doubles
-        $results = array_unique(array_merge($zendResults,$mysqlResults));
-        return $results;
+		// merge results (zend lucene first then mysql), mysql override zend results
+        $this->results = array_merge($zendResults,$mysqlResults);
+		$this->resultsCount = count($this->results);
+        return $this->results;
     }
 
     /**
@@ -506,23 +503,73 @@ class AdvSearchResults extends AdvSearchUtil{
 	 * @return array Returns a modified array of results
      */
     private function addScoreField($engine, array $results, array $hits = null) {
-		$nbres = count($results);
-		if ($engine == 'zend') {
-			for($i=0;$i<$nbres;$i++) {
-				// add lucene score
-				$results[$i] = array_merge($results[$i], array("score" => $hits[$i]->score));
+		if ($this->config['fieldPotency'] != 'createdon:1') {
+			$nbres = count($results);
+			if ($engine == 'zend') {
+				for($i=0;$i<$nbres;$i++) {
+					// add lucene score
+					$results[$i] = array_merge($results[$i], array("score" => $hits[$i]->score));
+				}
 			}
-		}
-		else {
-			// use fieldPotency parameter to calculate the score
-			// A faire
-			$score = 1;
-			for($i=0;$i<$nbres;$i++) {
-				// add lucene score
-				$results[$i] = array_merge($results[$i], array("score" => $score));
+			else {
+				// use fieldPotency parameter to calculate the score
+				$fieldPotency = explode(',',$this->config['fieldPotency']);
+				$fldps = array();
+				foreach($fieldPotency as $key => $value) list($fldps[$key]['field'],$fldps[$key]['weight']) = explode(':',$value);
+				for($i=0;$i<$nbres;$i++) {
+					$results[$i]['score'] = 0;
+					foreach($fldps as $fldp) {
+						$field = strtolower($results[$i][$fldp['field']]);
+						$results[$i]['score'] += $this->getScoreQuery($field, $fldp['weight'], $this->searchQuery);
+					}
+				}
 			}
 		}
 		return $results;
+	}
+
+    /**
+     * Get score from Zend_Search_Lucene_Search_Query
+	 *
+     * @access private
+	 * @param Zend_Search_Lucene_Search_Query $searchQuery The parsed query
+     * @param boolean $process True if the condition should be processed
+	 * @return integer Returns a score
+	 */
+    private function getScoreQuery($field, $weight, $query = null, $sign = true) {
+		if ( $query instanceOf Zend_Search_Lucene_Search_Query_Boolean ) {
+			$orScore = array();
+			$andScore = array();
+			$subqueries = $query->getSubqueries();
+			$signs = $query->getSigns();
+			$nbs = count($subqueries);
+			for($i=0;$i<$nbs;$i++) {
+				$score = $this->getScoreQuery($field, $weight, $subqueries[$i], $signs[$i]);
+				if (is_null($signs[$i])) $orScore[] = $score;
+				elseif ($signs[$i]) $andScore[] = $score;
+			}
+			$scores = array();
+			$score = 0;
+			$nband = count($andScore);
+			if ($nband) $scores[] = min($andScore);
+
+			$nbor = count($orScore);
+			if ($nbor) $scores[] = array_sum($orScore);
+
+			$nbs = count($scores);
+			if ($nbs) $score = min($scores);
+			return $score;
+		}
+		else if ( $query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Phrase ) {
+			$phrase = strtolower(substr($query->__toString(),1,-1)); // remove beginning and end quotes
+			$score = $weight * mb_substr_count($field, $phrase);
+			return $score;
+		}
+		else if ( $query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Term ) {
+			$term = strtolower($query->__toString());
+			$score = $weight * mb_substr_count($field, $term);
+			return $score;
+		}
 	}
 
     /**
@@ -533,9 +580,15 @@ class AdvSearchResults extends AdvSearchUtil{
 	 * @return array Returns a modified array of results
      */
     private function sortSearchResults($results) {
-        // finalize the sort with TVs or score (fields not included in mainFields)
+        // if needed finalize the sort with TVs (fields not included in mainFields) or score (fieldPotency)
         // results are already sorted by fields from modResource
-		if ($this->config['sortby']) {
+		if ($this->config['fieldPotency'] != 'createdon:1') {
+            foreach ($results as $key => $row) {
+                $score[$key] = $row['score'];
+                array_multisort($score, SORT_DESC, $results);
+            }
+		}
+		else if ($this->config['sortby']) {
 			foreach($this->sortbyField as $field) {
                 if (!in_array($field,$this->mainFields)) {
                     $col = array();
@@ -561,14 +614,14 @@ class AdvSearchResults extends AdvSearchUtil{
     private function prepareResults($results) {
 		// return search results as an associative array with id as key
 		$searchResults = array();
-		$idResults = array();
 		foreach($results as $result) {
-			$searchResults["{$result['id']}"] = $result;
-			$idResults[] = $result['id'];
+			$index = 'as'.$result['id'];
+			$searchResults[$index] = $result;
+            $this->idResults[] = $result['id'];
 		}
 
         // set lstIdResults
-		$lstIdResults = implode(',',$idResults);
+		$lstIdResults = implode(',',$this->idResults);
 
 		if ($this->dbg) {
             $this->modx->log(modX::LOG_LEVEL_DEBUG, 'lstIdsResults: '.$lstIdResults,'','prepareResults');
@@ -605,7 +658,7 @@ class AdvSearchResults extends AdvSearchUtil{
 
         // &contexts [ comma separated context names | $modx->context->get('key') ]
         $lstContexts =  $this->modx->getOption('contexts',$this->config,$this->modx->context->get('key'));
-        $this->config['contexts'] = implode(',',array_map("trim",explode(',',$lstContexts)));
+        $this->config['contexts'] = implode(',',array_map('trim',explode(',',$lstContexts)));
 
 	    // &docindexPath [ path | 'assets/files/docindex/' ]
         $path = $this->modx->getOption('docindexPath',$this->config,'docindex/');
@@ -620,7 +673,7 @@ class AdvSearchResults extends AdvSearchUtil{
 		if (!empty($this->queryHook['main']['fields'])) $lstFields = $this->queryHook['main']['fields'];
 		$fields = array();
         if (!empty($lstFields)){
-            $fields = array_map("trim",explode(',',$lstFields));
+            $fields = array_map('trim',explode(',',$lstFields));
         }
 		$this->config['fields'] = implode(',',$fields);
 
@@ -632,12 +685,12 @@ class AdvSearchResults extends AdvSearchUtil{
         // &fieldPotency - [ comma separated list of couple (field : potency) | 'createdon:1' (modResource) ]
         $lstFieldPotency = $this->modx->getOption('fieldPotency',$this->config, 'createdon:1');
         if (!empty($lstFieldPotency)) {
-            $fieldPotency = array_map("trim",explode(',',$lstFieldPotency));
+            $fieldPotency = array_map('trim',explode(',',$lstFieldPotency));
             $checkedFieldPotency = array();
             foreach($fieldPotency as $fldp) {
-                $fld = array_map("trim",explode(':',$fldp));
-                $fld[1] = (isset($fld[1]) && is_int($fld[1])) ? $fld[1] : 1;
-                $checkedFieldPotency[] = implode(',',$fld);
+                $fld = array_map('trim',explode(':',$fldp));
+                $fld[1] = (isset($fld[1]) && intval($fld[1])) ? $fld[1] : 1;
+                $checkedFieldPotency[] = implode(':',$fld);
             }
             $this->config['fieldPotency'] = implode(',',$checkedFieldPotency);
         }
@@ -647,7 +700,7 @@ class AdvSearchResults extends AdvSearchUtil{
         $lstWithFields = $this->modx->getOption('withFields',$this->config,'pagetitle,longtitle,alias,description,introtext,content');
 		if (!empty($this->queryHook['main']['withFields'])) $lstWithFields = $this->queryHook['main']['withFields'];
         if (!empty($lstWithFields)){
-            $this->mainWhereFields = array_map("trim",explode(',',$lstWithFields));
+            $this->mainWhereFields = array_map('trim',explode(',',$lstWithFields));
             $this->config['withFields'] = implode(',',$this->mainWhereFields);
         }
         else $this->config['withFields'] = $lstWithFields;
@@ -660,7 +713,7 @@ class AdvSearchResults extends AdvSearchUtil{
 			// &includeTVs - [ comma separated tv names | '' ]
 			$lstIncludeTVs = $this->modx->getOption('includeTVs',$this->config,'');
 			if (!empty($lstIncludeTVs)){
-				$this->tvFields = array_map("trim",explode(',',$lstIncludeTVs));
+				$this->tvFields = array_map('trim',explode(',',$lstIncludeTVs));
 				$this->config['includeTVs'] = implode(',',$this->tvFields);
 			}
 			else $this->config['includeTVs'] = $lstIncludeTVs;
@@ -668,20 +721,20 @@ class AdvSearchResults extends AdvSearchUtil{
 			// &withTVs - [ a comma separated list of TV names | '' ]
 			$lstWithTVs = $this->modx->getOption('withTVs',$this->config,'');
 			if (!empty($lstWithTVs)) {
-				$this->tvWhereFields = array_map("trim",explode(',',$lstWithTVs));
+				$this->tvWhereFields = array_map('trim',explode(',',$lstWithTVs));
 				$this->config['withTVs'] = implode(',',$this->tvWhereFields);
 			}
 			else $this->config['withTVs'] = $lstWithTVs;
 
 			// remove doubles between withTVs and includeTVs parameters
-			$this->tvFields = array_diff(array_merge($this->tvWhereFields, $this->tvFields), $this->tvWhereFields);
+			$this->tvFields = array_unique(array_merge($this->tvWhereFields, $this->tvFields));
 		}
 
         // &ids [ comma separated list of Ids | '' ] - ids or primary keys for custom package
         $lstIds = $this->modx->getOption('ids',$this->config,'');
 		if (!empty($this->queryHook['main']['lstIds'])) $lstIds = $this->queryHook['main']['lstIds'];
         if (!empty($lstIds)){
-		    $this->ids = array_map("trim",explode(',',$lstIds));
+		    $this->ids = array_map('trim',explode(',',$lstIds));
 		    $this->config['ids'] = implode(',',$this->ids);
         }
         else $this->config['ids'] = $lstIds;
@@ -692,25 +745,26 @@ class AdvSearchResults extends AdvSearchUtil{
         $this->config['perPage'] = (($perPage >= 0)) ? $perPage : 10;
 
         // &sortby - comma separated list of couple "field [ASC|DESC]" to sort by.
+		// field from joined resource should be named resourceName_fieldName. e.g: quipComment_body
         $lstSortby = $this->modx->getOption('sortby',$this->config,'createdon DESC');
 		if (!empty($this->queryHook['main']['sortby'])) $lstSortby = $this->queryHook['main']['sortby'];
 		if (!empty($this->queryHook['sortby'])) $lstSortby = $this->queryHook['sortby']; // override the custom declaration
 		if (!empty($lstSortby)){
-            $sortCpls = array_map("trim",explode(',',$lstSortby));
+            $sortCpls = array_map('trim',explode(',',$lstSortby));
             $sorts = array();
             $this->sortbyField = array();
             $this->sortbyDir = array();
             foreach($sortCpls as $sortCpl) {
-                $sortElts = array_map("trim",explode(' ',$sortCpl));
+                $sortElts = array_map('trim',explode(' ',$sortCpl));
 				$dir = (empty($sortElts[1])) ? 'DESC' : $sortElts[1];
 				$dir = (($dir != 'DESC') && ($dir != 'ASC')) ? 'DESC' : $dir;
-				$classFieldElts = array_map("trim",explode('.',$sortElts[0]));
-				$class = (count($classFieldElts) == 2) ? $classFieldElts[0] : $this->mainClass;
+				$classFieldElts = array_map('trim',explode('.',$sortElts[0]));
+				$class = (count($classFieldElts) == 2) ? $classFieldElts[0] : '';
 				$field = (count($classFieldElts) == 2) ? $classFieldElts[1] : $classFieldElts[0];
 				$this->sortbyField[] = $field;
-				$this->sortbyClass["{$field}"] = $class;
+				$this->sortbyClass["{$field}"] = (!empty($class)) ? $this->modx->escape($class) . '.' : '';
 				$this->sortbyDir["{$field}"] = $dir;
-				$sorts[] = "{$class}.{$field} {$dir}";
+				$sorts[] = "{$field} {$dir}";
             }
             $this->config['sortby'] = implode(',',$sorts);
         }
@@ -765,7 +819,7 @@ class AdvSearchResults extends AdvSearchUtil{
 		//=============================  add an orderby clause for selected fields
 		if (!empty($this->sortbyField)){
 			foreach($this->sortbyField as $field) {
-				$classfield = $this->modx->escape($this->sortbyClass["{$field}"]).'.'.$this->modx->escape($field);
+				$classfield = $this->sortbyClass["{$field}"].$this->modx->escape($field);
 				$dir = $this->sortbyDir["{$field}"];
 				$c->sortby($classfield,$dir);
 			}
@@ -828,13 +882,13 @@ class AdvSearchResults extends AdvSearchUtil{
 					$this->modx->addPackage($joined['package'],$joined['packagePath']);
 					// initialize and add joined displayed fields
 					if (!empty($joined['withFields'])) {
-						$joinedWhereFields = array_map("trim",explode(',',$joined['withFields'])); 			// fields of joined table where to do the search
-						if (!empty($joined['fields'])) $joinedFields = array_map("trim",explode(',',$joined['fields'])); 			// fields of joined table to display
+						$joinedWhereFields = array_map('trim',explode(',',$joined['withFields'])); 			// fields of joined table where to do the search
+						if (!empty($joined['fields'])) $joinedFields = array_map('trim',explode(',',$joined['fields'])); 			// fields of joined table to display
 						else $joinedFields = $joinedWhereFields;
 					}
 					else {
 						if (!empty($joined['fields'])) {
-							$joinedFields = array_map("trim",explode(',',$joined['fields']));
+							$joinedFields = array_map('trim',explode(',',$joined['fields']));
 							$joinedWhereFields = $joinedFields;
 						}
 					}
@@ -846,10 +900,10 @@ class AdvSearchResults extends AdvSearchUtil{
 					foreach($joinedFields as & $joinedField) $joinedField = "{$joinedClass}_{$joinedField}"; // all the fields of joined class are prefixed by classname_
 					$this->joinedFields = array_merge($this->joinedFields, $joinedFields);
 					// add left join
-					list($leftCriteria,$rightCriteria) = array_map("trim",explode('=',$joined['joinCriteria']));
-					$leftCriteriaElts = array_map("trim",explode('.',$leftCriteria));
+					list($leftCriteria,$rightCriteria) = array_map('trim',explode('=',$joined['joinCriteria']));
+					$leftCriteriaElts = array_map('trim',explode('.',$leftCriteria));
 					$leftCriteria = (count($leftCriteriaElts) == 1) ? "`{$joinedClass}`.`{$leftCriteriaElts[0]}`" : "`{$leftCriteriaElts[0]}`.`{$leftCriteriaElts[1]}`";
-					$rightCriteriaElts = array_map("trim",explode('.',$rightCriteria));
+					$rightCriteriaElts = array_map('trim',explode('.',$rightCriteria));
 					$rightCriteria = (count($rightCriteriaElts) == 1) ? "`{$joinedClass}`.`{$rightCriteriaElts[0]}`" : "`{$rightCriteriaElts[0]}`.`{$rightCriteriaElts[1]}`";
 					$joined['joinCriteria'] = "{$leftCriteria} = {$rightCriteria}";
 					$c->leftJoin($joinedClass,$joinedClass,$joined['joinCriteria']);

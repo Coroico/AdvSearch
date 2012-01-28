@@ -4,14 +4,14 @@
  *
  * @package 	AdvSearch
  * @author		Coroico
- * @copyright 	Copyright (c) 2011 by Coroico <coroico@wangba.fr>
+ * @copyright 	Copyright (c) 2012 by Coroico <coroico@wangba.fr>
  *
- * @tutorial	Some useful methods shared by newSearch classes
+ * @tutorial	Some useful methods shared by advSearch classes
  *
  */
 // AdvSearch version
 define('PKG_VERSION','1.0.0');
-define('PKG_RELEASE','rc2');
+define('PKG_RELEASE','pl');
 
 abstract class AdvSearchUtil {
 
@@ -36,8 +36,8 @@ abstract class AdvSearchUtil {
         $this->config =& $config;
 
         // path and url
-        $corePath = $this->modx->getOption('newSearch.core_path',null,$this->modx->getOption('core_path').'components/advsearch/');
-        $assetsUrl = $this->modx->getOption('newSearch.assets_url',null,$this->modx->getOption('assets_url').'components/advsearch/');
+        $corePath = $this->modx->getOption('advSearch.core_path',null,$this->modx->getOption('core_path').'components/advsearch/');
+        $assetsUrl = $this->modx->getOption('advSearch.assets_url',null,'assets/components/advsearch/');
         $this->config = array_merge(array(
             'corePath' => $corePath,
             'assetsUrl' => $assetsUrl,
@@ -66,7 +66,7 @@ abstract class AdvSearchUtil {
      * @param string $msgerr The error message
 	 * @return boolean true if valid otherwise false + msgerr
      */
-    public function checkCommonParams() {
+    public function checkCommonParams(& $msgerr = '') {
 
         $this->config = array_map("trim",$this->config);
 
@@ -84,7 +84,8 @@ abstract class AdvSearchUtil {
 		// charset [ charset | 'UTF-8' ]
 		$charset = $this->modx->config['modx_charset'];
 		if ($charset != 'UTF-8') {
-			$this->modx->log(modX::LOG_LEVEL_ERROR,'[AdvSearch] AdvSearch runs only with charset UTF-8. The current charset is '.$charset);
+			$msgerr = '[AdvSearch] AdvSearch runs only with charset UTF-8. The current charset is '.$charset;
+			$this->modx->log(modX::LOG_LEVEL_ERROR,$msgerr);
 			return false;
 		}
         $this->config['charset'] = $charset;
@@ -92,15 +93,20 @@ abstract class AdvSearchUtil {
 		// check that multibyte string option is on
 		$usemb = $this->modx->config['use_multibyte'];
 		if (!$usemb) {
-			$this->modx->log(modX::LOG_LEVEL_ERROR,'[AdvSearch] AdvSearch runs only with the multibyte extension on. See Lexicon and language system settings.');
+			$msgerr = '[AdvSearch] AdvSearch runs only with the multibyte extension on. See Lexicon and language system settings.';
+			$this->modx->log(modX::LOG_LEVEL_ERROR,$msgerr);
 			return false;
 		}
 
-        // &asId - [Unique id for newSearch instance | 'as0' ]
+        // &asId - [Unique id for advSearch instance | 'as0' ]
         $this->config['asId'] = $this->modx->getOption('asId',$this->config,'as0');
 
         // &method [ 'POST' | 'GET' ]
         $this->config['method'] = strtoupper($this->modx->getOption('method',$this->config,'GET'));
+
+        // &init  [ 'none' | 'all' ]
+        $init = $this->modx->getOption('init',$this->config,'none');
+        $this->config['init'] = (($init == 'all') || ($init == 'none')) ? $init : 'none';
 
         // &libraryPath under assets [ path | 'libraries/' ]
         $path = $this->modx->getOption('libraryPath',$this->config,'libraries/');
@@ -125,12 +131,8 @@ abstract class AdvSearchUtil {
         $withAjax = (int) $this->modx->getOption('withAjax',$this->config,0);
         $this->config['withAjax'] = (($withAjax == 0 || $withAjax == 1)) ? $withAjax : 0;
 
-        if ($this->config['withAjax']) {
-            // &ajaxResultsId - [ resource id | 0]
-            $ajaxResultsId = (int) $this->modx->getOption('ajaxResultsId',$this->config,0);
-            $this->config['ajaxResultsId'] = ($ajaxResultsId > 0) ? $ajaxResultsId : 0;
-            if (!$this->config['ajaxResultsId']) $this->config['withAjax'] = 0;  // $ajaxResultsId mandatory
-        }
+		// &urlScheme
+		$this->config['urlScheme'] = $this->modx->getOption('urlScheme',$this->config,-1);
 
 		if ($this->dbg) $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Config parameters after checking: '.print_r($this->config, true),'','checkCommonParams');
 

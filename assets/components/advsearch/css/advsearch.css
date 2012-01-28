@@ -1,20 +1,20 @@
 /*
 css style for AdvSearch
-- common or non-ajax tags are prefixed by advsea_
-- tags for ajax mode are prefixed by aadvsea_
 */
 
 /* tags searchform
 -------------------------------------------------------------- */
-form.advsea-search-form fieldset{
+form.advsea-form fieldset{
 	padding: 10px 10px;
 	margin: 10px 10px;
 	border: 1px solid #BFD3C7;
 }
-form.advsea-search-form  #as0_search{
-	width: 300px;
+form.advsea-form  #as0_advsea-search{
+	width: 200px;
+	height: 20px;
 }
-form.advsea-search-form a.advsea-helplink {
+
+form.advsea-form a.advsea-helplink {
   padding: 0 20px 0 0;
   background: url(images/help.png) 0 2px no-repeat; 
   font-size: 16px;
@@ -26,7 +26,7 @@ a.advsea-helplink  span{
   display: none;
 }
 
-form.advsea-search-form div.advsea-helpwindow{
+form.advsea-form div.advsea-helpwindow{
   position:absolute;
   left:0;
   top:0;
@@ -41,6 +41,23 @@ form.advsea-search-form div.advsea-helpwindow{
 
 /* tags results
 -------------------------------------------------------------- */
+
+img.close-img, img.load-img { position: relative; top: 3px; left: 3px;}
+
+p.advsea-morelink{
+  margin: 0 auto;
+  width: 150px;
+  text-align: center;
+}
+p.advsea-morelink a {
+  color: #611F12;
+}
+.advsea-page a{
+  color: blue;
+}
+.advsea-current-page{
+  color: red;
+}
 
 .advsea-previous a, .advsea-next a{
   color: blue;
@@ -57,7 +74,7 @@ div.advsea-paging0{
 div.advsea-paging, div.advsea-paging1{
   font-size: 1em;
   color: red;
-  width: 200px;
+  width: 250px;
   margin: 15px auto;
 }
 
@@ -86,16 +103,4 @@ div.advsea-result div.imgArticle{
 .advsea-highlight-3{color: #7B09F4}
 .advsea-highlight-4{color: #F48309}
 .advsea-highlight-5{color: #935A1D}
-.advsea-highlight-6{color: #628439}
-
-/*------------- for simple search */
-.sisea-highlight {
-  font-weignt: bold;
-  font-style: italic;
-}
-.sisea-highlight-1{color: #EA4E15}
-.sisea-highlight-2{color: #1A1ADD}
-.sisea-highlight-3{color: #7B09F4}
-.sisea-highlight-4{color: #F48309}
-.sisea-highlight-5{color: #935A1D}
 .advsea-highlight-6{color: #628439}
