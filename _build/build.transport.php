@@ -49,7 +49,7 @@
 define('PKG_NAME','AdvSearch');
 define('PKG_NAME_LOWER','advsearch');
 define('PKG_VERSION','1.0.0');
-define('PKG_RELEASE','rc2');
+define('PKG_RELEASE','pl2');
 define('PKG_CATEGORY','AdvSearch');
 
 /* Set package options - you can turn these on one-by-one

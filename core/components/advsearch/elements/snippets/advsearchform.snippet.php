@@ -7,11 +7,11 @@
  * Use AdvSearchForm to display a filter & search form
  *
  * @category    Third Party Component
- * @version     1.0.0 RC2
+ * @version     1.0.0 pl
  * @license     http://www.gnu.org/copyleft/gpl.html GNU Public License (GPL)
  *
  * @author      Coroico <coroico@wangba.fr>
- * @date        14/08/2011
+ * @date        25/01/2012
  *
  * -----------------------------------------------------------------------------
  */

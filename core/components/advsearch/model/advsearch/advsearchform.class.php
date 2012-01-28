@@ -4,7 +4,7 @@
  *
  * @package 	AdvSearch
  * @author		Coroico
- * @copyright 	Copyright (c) 2011 by Coroico <coroico@wangba.fr>
+ * @copyright 	Copyright (c) 2012 by Coroico <coroico@wangba.fr>
  *
  * @tutorial	Main class to display the search form
  *
@@ -31,7 +31,7 @@ class AdvSearchForm extends AdvSearchUtil{
 
         // check parameters
         $valid = $this->checkParams($msg);
-		if (!$valid) return '';
+		if (!$valid) return $msg;
 
         // initialize searchString
         $defaultString = $this->modx->lexicon('advsearch.box_text');
@@ -87,6 +87,7 @@ class AdvSearchForm extends AdvSearchUtil{
             'searchValue' => $this->searchString,
             'searchIndex' => $this->config['searchIndex'],
             'helpLink' => $helpLink,
+			'liveSearch' => $this->config['liveSearch'],
             'resultsWindow' => $resultsWindow
         );
 
@@ -99,11 +100,12 @@ class AdvSearchForm extends AdvSearchUtil{
 
         // add the external css and js files
         // add advSearch css file
-        $this->modx->regClientCss($this->config['assetsUrl'].'css/advsearch.css');
+        if ($this->config['addCss'] == 1) $this->modx->regClientCss($this->config['assetsUrl'].'css/advsearch.css');
 
         // include or not the jQuery library (required for help, clear default text, ajax mode)
         if ($this->config['help'] || $this->config['clearDefault'] || $this->config['withAjax']) {
-            if ($this->config['addJQuery']) $this->modx->regClientStartupScript($this->config['jsJQuery']);
+            if ($this->config['addJQuery'] == 1) $this->modx->regClientStartupScript($this->config['jsJQuery']);
+			elseif ($this->config['addJQuery'] == 2) $this->modx->regClientScript($this->config['jsJQuery']);
         }
 
         if ($this->config['help']) {
@@ -117,18 +119,30 @@ class AdvSearchForm extends AdvSearchUtil{
             $jsHeaderArray['cdt'] = $this->modx->lexicon('advsearch.box_text');
         }
 
-        // add inputForm js script linked to the form
-        if ($this->config['jsSearchForm']) $this->modx->regClientStartupScript($this->config['jsSearchForm']);
+        // include or not the inputForm js script linked to the form
+		if ($this->config['addJs'] == 1) $this->modx->regClientStartupScript($this->config['jsSearchForm']);
+        elseif ($this->config['addJs'] == 2) $this->modx->regClientScript($this->config['jsSearchForm']);
+
 
         if ($this->config['withAjax']) {
             // include the advsearch js file in the header
-            $this->modx->regClientStartupScript($this->config['assetsUrl'].'js/advsearch.min.js');
+            if ($this->config['addJs'] == 1) $this->modx->regClientStartupScript($this->config['assetsUrl'].'js/advsearch.min.js');
+			elseif ($this->config['addJs'] == 2) $this->modx->regClientScript($this->config['assetsUrl'].'js/advsearch.min.js');
 
-            // add ajaxResultsId and liveSearch mode in js header
+            // add ajaxResultsId, liveSearch mode and some other parameters in js header
             $jsHeaderArray['asid'] = $this->config['asId'];
             if ($this->config['liveSearch']) $jsHeaderArray['ls'] = $this->config['liveSearch'];
-            if ($this->config['opacity'] < 1.) $jsHeaderArray['op'] = $this->config['opacity'];
-            $jsHeaderArray['arid'] = $this->config['ajaxResultsId'];
+            if ($this->config['searchIndex'] != 'search') $jsHeaderArray['sx'] = $this->config['searchIndex'];
+            if ($this->config['offsetIndex'] != 'offset') $jsHeaderArray['ox'] = $this->config['offsetIndex'];
+            if ($this->config['init'] != 'none') $jsHeaderArray['ii'] = $this->config['init'];
+            if ($this->config['keyval']) {
+				$keyvals = array_map("trim",explode(',',$this->config['keyval']));
+				foreach($keyvals as $keyval) {
+					list($key,$val) = array_map("trim",explode(':',$keyval));
+					$jsHeaderArray[$key] = $val;
+				}
+			}
+            $jsHeaderArray['arh'] = $this->modx->makeUrl($this->config['ajaxResultsId'], '', array(), $this->config['urlScheme']);
         }
 
         // set up of js header for the current instance
@@ -148,7 +162,8 @@ class AdvSearchForm extends AdvSearchUtil{
 </script>
 <!-- end AdvSearch header -->
 EOD;
-            $this->modx->regClientStartupScript($jsHeader);
+            if ($this->config['addJs'] == 1) $this->modx->regClientStartupScript($jsHeader);
+			else $this->modx->regClientScript($jsHeader);
 
         }
 
@@ -168,8 +183,16 @@ EOD;
     private function checkParams(& $msgerr = '') {
 
         // check the common parameters with AdvSearch class
-        $valid = $this->checkCommonParams();
+        $valid = $this->checkCommonParams($msgerr);
 		if (!$valid) return false;
+
+		// &addCss - [ 0 | 1 ]
+        $addCss = (int) $this->modx->getOption('addCss',$this->config,1);
+        $this->config['addCss'] = ($addCss == 0 || $addCss == 1) ? $addCss : 1;
+
+		// &addJs - [ 0 | 1 | 2 ]
+        $addJs = (int) $this->modx->getOption('addJs',$this->config,1);
+        $this->config['addJs'] = ($addJs == 0 || $addJs == 1 || $addJs == 2) ? $addJs : 1;
 
         // &clearDefault - [ 1 | 0 ]
         $clearDefault = (int) $this->modx->getOption('clearDefault',$this->config,0);
@@ -178,6 +201,9 @@ EOD;
         // &help - [ 1 | 0 ] - to add a help link near the search form
         $help = (int) $this->modx->getOption('help',$this->config,1);
         $this->config['help'] = ($help >=0) ? $help : 1;
+
+        // &keyval
+        $this->config['keyval'] = $this->modx->getOption('keyval',$this->config,'');
 
         // &jsSearchForm - [ url | $assetsUrl . 'js/advSearchForm.min.js' ]
         $this->config['jsSearchForm'] = $this->modx->getOption('jsSearchForm',$this->config,$this->config['assetsUrl'].'js/advsearchform.min.js');
@@ -193,23 +219,29 @@ EOD;
 
         //jQuery used by the help and by ajax mode
         if ($this->config['help'] || $this->config['withAjax']) {
-            // &addJQuery - [1 | 0]
+            // &addJQuery - [ 0 | 1 | 2 ]
             $addJQuery = (int) $this->modx->getOption('addJQuery',$this->config,1);
-            $this->config['addJQuery'] = ($addJQuery == 0 || $addJQuery == 1) ? $addJQuery : 1;
+            $this->config['addJQuery'] = ($addJQuery == 0 || $addJQuery == 1 || $addJQuery == 2) ? $addJQuery : 1;
 
             // &jsJQuery - [ Location of the jQuery javascript library ]
-            $this->config['jsJQuery'] = $this->modx->getOption('jsJQuery',$this->config,$this->config['assetsUrl'].'js/jquery-1.5.1.min.js');
+            $this->config['jsJQuery'] = $this->modx->getOption('jsJQuery',$this->config,$this->config['assetsUrl'].'js/jquery-1.7.1.min.js');
         }
 
         // ajax mode parameters
         if ($this->config['withAjax']) {
-            // $liveSearch - [ 1 | 0 ]
+            // &ajaxResultsId - [ resource id | 0]
+            $ajaxResultsId = (int) $this->modx->getOption('ajaxResultsId',$this->config,0);
+            $this->config['ajaxResultsId'] = ($ajaxResultsId > 0) ? $ajaxResultsId : 0;
+            if (!$this->config['ajaxResultsId']) {
+				$this->config['withAjax'] = 0;  // $ajaxResultsId mandatory
+				$msgerr = '[AdvSearch] ajaxResultsId parameter not defined!';
+				$this->modx->log(modX::LOG_LEVEL_ERROR,$msgerr);
+				return false;
+			}
+
+            // &liveSearch - [ 1 | 0 ]
             $liveSearch = floatval($this->modx->getOption('liveSearch',$this->config,0));
             $this->config['liveSearch'] = ($liveSearch == 0 || $liveSearch == 1) ? $liveSearch : 0;
-
-            // &opacity - [ 0. < float <= 1. ]  Should be a float value
-            $opacity = floatval($this->modx->getOption('opacity',$this->config,1.));
-            $this->config['opacity'] = ($opacity > 0. && $opacity <= 1.) ? $opacity : 1.0;
         }
 
         if ($this->dbg) $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Config parameters after checking: '.print_r($this->config, true),'','checkParams');

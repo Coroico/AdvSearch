@@ -17,6 +17,8 @@
  * Suite 330, Boston, MA 02111-1307 USA
  *
  * @package advsearch
+ *
+ * WARNING: The closing EOD; must be followed by a newline.
  */
 /**
  * Help Lexicon Topic
@@ -26,7 +28,7 @@
  */
 
 $_lang['advsearch.help'] = <<<EOD
-<div id="content">
+<div id="advsea-help-content">
 <h1>
 	Advanced Search - Query Syntax
 </h1>
@@ -135,3 +137,4 @@ $_lang['advsearch.help'] = <<<EOD
 </div>
 <!--+ end content +-->
 EOD;
+//don't remove this line. The closing EOD; must be followed by a newline. 

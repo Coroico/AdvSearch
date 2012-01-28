@@ -4,7 +4,7 @@
  *
  * @package 	AdvSearch
  * @author		Coroico
- * @copyright 	Copyright (c) 2011 by Coroico <coroico@wangba.fr>
+ * @copyright 	Copyright (c) 2012 by Coroico <coroico@wangba.fr>
  *
  * @tutorial	Class to handle hooks for AdvSearch classes
  *
@@ -30,9 +30,13 @@ class AdvSearchHooks {
      * @var AdvSearchResults $search A reference to the AdvSearchResults instance.
      * @access public
      */
-    public $search = null;
+    public $results = null;
 
-    public $queryHook;
+	public $search = null;
+
+    public $queryHook = null;
+
+	public $postHook = null;
 
     /**
      * The constructor for the advSearchHooks class
@@ -52,22 +56,27 @@ class AdvSearchHooks {
      * Loads an array of hooks. If one fails, will not proceed.
      *
      * @access public
-     * @param array $hooks The hooks to run.
-     * @param array $fields The fields and values of the form
-     * @param array $customProperties An array of extra properties to send to the hook
-     * @return array An array of field name => value pairs.
+     * @param array $hooks The csv list of hooks to run.
+     * @param array $commonProperties An array of extra properties common to all hooks
+     * @param array $hookProperties An array of extra properties for each hook
+     * @return
      */
-    public function loadMultiple($hooks, array $fields = array(), array $customProperties = array()) {
+    public function loadMultiple($hooks,array $commonProperties = array(),array $hookProperties = array()) {
         if (empty($hooks)) return array();
         if (is_string($hooks)) $hooks = explode(',',$hooks);
 
         $this->hooks = array();
-        $this->fields =& $fields;
+		$ih = 0;
         foreach ($hooks as $hook) {
             $hook = trim($hook);
-            $success = $this->load($hook,$this->fields,$customProperties);
-            if (!$success) return $this->hooks;
-            /* dont proceed if hook fails */
+            $properties = $commonProperties;
+            foreach($hookProperties as $propertyName => $propertyVal) {
+				$propertyArrayVal = array_map('trim',explode(',',$propertyVal));
+                $properties = array_merge($properties, array($propertyName => $propertyArrayVal[$ih]));
+            }
+            $success = $this->load($hook,$properties);
+            if (!$success) return $this->hooks; /* dont proceed if hook fails */
+            $ih++;
         }
         return $this->hooks;
     }
@@ -77,30 +86,28 @@ class AdvSearchHooks {
      *
      * @access public
      * @param string $hook The name of the hook. May be a Snippet name.
-     * @param array $fields The fields and values of the form.
+     * @param array $results The keys and values of the results.
      * @param array $customProperties Any other custom properties to load into a custom hook.
      * @return boolean True if hook was successful.
      */
-    public function load($hook, array $fields = array(), array $customProperties = array()) {
+    public function load($hook,array $customProperties = array()) {
         $success = false;
-        if (!empty($fields)) $this->fields =& $fields;
         $this->hooks[] = $hook;
 
-        $reserved = array('load','__construct','getErrorMessage');
+        $reserved = array('load','_process','__construct','getErrorMessage');
         if (method_exists($this,$hook) && !in_array($hook,$reserved)) {
             /* built-in hooks */
-            $success = $this->$hook($this->fields);
-
-        } else if ($snippet = $this->modx->getObject('modSnippet',array('name' => $hook))) {
+            $success = $this->$hook();
+        }
+		else if ($snippet = $this->modx->getObject('modSnippet',array('name' => $hook))) {
             /* custom snippet hook */
             $properties = array_merge($this->search->config, $customProperties);
             $properties['advsearch'] =& $this->search;
             $properties['hook'] =& $this;
-            $properties['fields'] = $this->fields;
             $properties['errors'] =& $this->errors;
             $success = $snippet->process($properties);
-
-        } else {
+        }
+		else {
             /* no hook found */
             $this->modx->log(modX::LOG_LEVEL_ERROR,'[AdvSearch] Could not find hook "'.$hook.'".');
             $success = true;
@@ -109,7 +116,8 @@ class AdvSearchHooks {
         if (is_array($success) && !empty($success)) {
             $this->errors = array_merge($this->errors,$success);
             $success = false;
-        } else if ($success != true) {
+        }
+		else if ($success != true) {
             $this->errors[$hook] .= ' '.$success;
             $success = false;
         }
@@ -140,16 +148,68 @@ class AdvSearchHooks {
         return $this->errors[$key];
     }
 
-	function processValue($class,$classField,$oper,$val) {
+    function getVarRequest() {
+        if (isset($_REQUEST['asform'])) {
+			$asform = strip_tags($_REQUEST['asform']);
+			$formParams = json_decode($asform);
+			$excluded = array('id','asid','sub');
+			$excluded[] = $this->search->config['searchIndex'];
+			$excluded[] = $this->search->config['offsetIndex'];
+			foreach($formParams as $key => $val) {
+				$key = trim($key,"[]");
+				if (!(in_array($key,$excluded))) {
+					if (is_array($val)) {
+						if(!isset($_REQUEST[$key])) {
+							$_REQUEST[$key] = array();
+							foreach($val as $v) $_REQUEST[$key][] = $v;
+						}
+					}
+					else {
+						if(!isset($_REQUEST[$key])) $_REQUEST[$key] = $val;
+					}
+				}
+			}
+		}
+    }
+
+	function processValue($class,$classField,$oper,$ptrn,$val) {
 		$condition = '';
-		if (!is_numeric($val)) $val = "'{$val}'";
-		switch($oper) {
-			case 'IN':
-			case 'NOT IN':  // unary operator with a list of values wrapped by parenthesis
-				$condition = "({$classField} {$oper}({$val}))";
-				break;
-			default:    // >,<,>=,<=,LIKE,REGEXP  (unary operator)
-				$condition = "({$classField} {$oper} {$val})";
+		$val = addslashes($val);
+		if ($this->queryHook['version'] == '1.2') {
+			switch($oper) {
+				case 'IN':
+				case 'NOT IN':  // operator with a list of values wrapped by parenthesis
+					$val = (!is_numeric($val)) ? "'{$val}'" : $val;
+					$condition = "({$classField} {$oper}({$val}))";
+					break;
+				case 'FIND':
+					if (empty($ptrn)) $condition = "(FIND_IN_SET( {$val}, {$classField} ))"; // csv list by default
+					else $condition = "(FIND_IN_SET( '{$val}', REPLACE( {$classField}, '{$ptrn}', ',' ) ))";
+					break;
+				case 'MATCH':  // operator with exact matching between word1||word2||word3
+					$condition = "({$classField} REGEXP '(^|\\\|)+{$val}(\\\||$)+' )";
+					break;
+				case 'REGEXP': // operator with exact pattern matching. eg: ptrn= '%s[0-9]*'
+					// MATCH is equivalent to ptrn =  '(^|\\\|)+%s(\\\||$)+'
+					$ptrn = sprintf($ptrn,$val);
+					$condition = "({$classField} REGEXP '{$ptrn}' )";
+					break;
+				default:    // >,<,>=,<=,LIKE  (unary operator)
+					$val = (!is_numeric($val)) ? "'{$val}'" : $val;
+					$condition = "({$classField} {$oper} {$val})";
+			}
+		}
+		else { // QueryHook version 1.1
+			if ($oper == 'FIND') $oper = 'REGEXP';
+			if ($oper == 'MATCH') $oper = 'REGEXP';
+			switch($oper) {
+				case 'IN':
+				case 'NOT IN':  // unary operator with a list of values wrapped by parenthesis
+					$condition = "({$classField} {$oper}({$val}))";
+					break;
+				default:    // >,<,>=,<=,LIKE,REGEXP  (unary operator)
+					$condition = "({$classField} {$oper} {$val})";
+			}
 		}
 		return $condition;
 	}
@@ -166,7 +226,15 @@ class AdvSearchHooks {
 
 			$keyElts = array_map("trim",explode(':',$keyCondition));
 			if (count($keyElts) == 1) $keyElts[1] = '=';
+			elseif (count($keyElts) == 2) {
+				if ($keyElts[1] == 'REGEXP') $keyElts[2] = '%s';
+				else $keyElts[2] = '';
+			}
+
 			$keyCondition = implode(':',$keyElts);
+			$oper = strtoupper($keyElts[1]);	// operator
+			$ptrn = strtolower($keyElts[2]);	// pattern
+
 			$classFieldElts = array_map("trim",explode('.',$keyElts[0]));
 			$class = (count($classFieldElts) == 2) ? $classFieldElts[0] : '';
             $class = trim($class,'`');
@@ -180,7 +248,6 @@ class AdvSearchHooks {
 				$tvTbl = $this->modx->getTableName('modTemplateVar');	// site_tmplvars
             }
             else $classField = "{$this->modx->escape($class)}.{$this->modx->escape($field)}";
-			$oper = strtoupper($keyElts[1]);	// operator
 
 			$valueElts = array_map("trim",explode(':',$valueCondition));
 			$tag = $valueElts[0];
@@ -188,16 +255,16 @@ class AdvSearchHooks {
 			$filtered = (!empty($valueElts[2])) ? array_map("trim",explode(',',$valueElts[2])) : array();
 
 			if ($typeValue == 'request') { // the value is provided par an http variable
-				if (isset($_POST[$tag]) || isset($_GET[$tag])){
-					if (is_array($_POST[$tag]) || is_array($_GET[$tag])) {
+				if (isset($_REQUEST[$tag])){
+					if (is_array($_REQUEST[$tag])) {
 						// multiple list
-						$values = (isset($_POST[$tag])) ? $_POST[$tag] : $_GET[$tag];
+						$values = $_REQUEST[$tag];
 						$orConditions = array();
 						foreach($values as $val) {
 							$val = strip_tags($val);
 							if (($val != '') && !in_array($val, $filtered)) {
 								$requests[$tag][] = $val;
-								$orConditions[] = $this->processValue($class,$classField,$oper,$val);
+								$orConditions[] = $this->processValue($class,$classField,$oper,$ptrn,$val);
 							}
 						}
 						if (count($orConditions)) {
@@ -208,10 +275,10 @@ class AdvSearchHooks {
 					}
 					else {
 						// single value
-						$val = (isset($_POST[$tag])) ? strip_tags($_POST[$tag]) : strip_tags($_GET[$tag]);
+						$val = strip_tags($_REQUEST[$tag]);
 						if (($val != '') && !in_array($val, $filtered)) {
 							$requests[$tag] = $val;
-							$orCondition = $this->processValue($class,$classField,$oper,$val);
+							$orCondition = $this->processValue($class,$classField,$oper,$ptrn,$val);
 							if ($class != 'tv') $conditions[] = $orCondition;
 							else $conditions[] = $this->processTvCondition($cvTbl,$tvTbl,$field,$orCondition);
 						}
@@ -220,7 +287,7 @@ class AdvSearchHooks {
 			}
 			else {
 				// field:oper => CONST  (where CONST is a numeric or a string)
-				$orCondition = $this->processValue($class,$classField,$oper,$tag);
+				$orCondition = $this->processValue($class,$classField,$oper,$ptrn,$tag);
 				if ($class != 'tv') $conditions[] = $orCondition;
 				else $conditions[] = $this->processTvCondition($cvTbl,$tvTbl,$field,$orCondition);
 			}
@@ -228,10 +295,15 @@ class AdvSearchHooks {
 		return $conditions;
 	}
 
+	// ============================================================== function available from queryHook
+
     public function setQueryHook(array $qhDeclaration = array() ) {
 		$requests = null;
 		if (!empty($qhDeclaration)) {
-			if ($this->config['debug']) $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] qhDeclaration: '.print_r($qhDeclaration,true),'','setQueryHook');
+
+			// queryHook version
+			$this->queryHook['version'] = '1.1';
+			if (!empty($qhDeclaration['qhVersion'])) $this->queryHook['version'] = $qhDeclaration['qhVersion'];
 
 			// requests
 			if (!empty($qhDeclaration['requests'])) $requests = $qhDeclaration['requests'];
@@ -239,9 +311,9 @@ class AdvSearchHooks {
 			// sortby
 			if (!empty($qhDeclaration['sortby'])) {
 				$tag = $qhDeclaration['sortby'];
-				if (is_array($_POST[$tag]) || is_array($_GET[$tag])) {
+				if (is_array($_REQUEST[$tag])) {
 					// multiple list
-					$values = (isset($_POST[$tag])) ? $_POST[$tag] : $_GET[$tag];
+					$values = $_REQUEST[$tag];
 					$vals = array();
 					foreach($values as $val) {
 						if (!empty($val)) $vals[] = strip_tags($val);
@@ -253,7 +325,7 @@ class AdvSearchHooks {
 					}
 				}
 				else {
-					$val = (isset($_POST[$tag])) ? strip_tags($_POST[$tag]) : strip_tags($_GET[$tag]);
+					$val = strip_tags($_REQUEST[$tag]);
 					if (!empty($val)) {
 						$this->queryHook['sortby'] = $val;
 						$requests[$tag] = $val;
@@ -264,7 +336,7 @@ class AdvSearchHooks {
 			// perPage
 			if (!empty($qhDeclaration['perPage'])) {
 				$tag = $qhDeclaration['perPage'];
-				$val = (isset($_POST[$tag])) ? strip_tags($_POST[$tag]) : strip_tags($_GET[$tag]);
+				$val = strip_tags($_REQUEST[$tag]);
 				if (!empty($val)) {
 					$this->queryHook['perPage'] = $val;
 					$requests[$tag] = $val;
@@ -281,6 +353,7 @@ class AdvSearchHooks {
 
 			// andConditions
 			if (!empty($qhDeclaration['andConditions'])) {
+				if ($this->search->config['withAjax']) $this->getVarRequest();
 				$andConditions = $this->processConditions($qhDeclaration['andConditions'], $requests);
 				if (!empty($andConditions)) $this->queryHook['andConditions'] = $andConditions;
 			}
@@ -292,5 +365,32 @@ class AdvSearchHooks {
 			if (!empty($requests)) $this->queryHook['requests'] = $requests;
 		}
         return $this->queryHook;
+    }
+
+    /**
+     * Processes string and sets placeholders
+     *
+     * @param string $str The string to process
+     * @param array $placeholders An array of placeholders to replace with values
+     * @return string The parsed string
+     */
+    public function _process($str,array $placeholders = array()) {
+        foreach ($placeholders as $k => $v) {
+            $str = str_replace('[[+'.$k.']]',$v,$str);
+        }
+        return $str;
+    }
+
+	// ============================================================== function available from postHook
+
+    /**
+     * Update results
+     *
+     * @param array $searchResults The updated AdvSearchResults
+	 * @return array $postHook
+     */
+	public function updateResults($searchResults) {
+        $this->postHook = $searchResults;
+        return $this->postHook;
     }
 }
