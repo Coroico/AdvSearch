@@ -633,7 +633,9 @@ class AdvSearch extends AdvSearchUtil{
 							$this->config['offsetIndex'] => $pagePh['offset']
 						));
 						$pagePh['link'] = $this->modx->makeUrl($id, '' , $parameters, $this->config['urlScheme']);
-						$paging2 .= $this->processChunk($this->config['pageTpl'],$pagePh);
+						$pageLnk = $this->processChunk($this->config['pageTpl'],$pagePh);
+						$pageLnk = sprintf($pageLnk,$pagePh['text']); // to set up the title of link
+						$paging2 .= $pageLnk;
 					}
 					if ($i < $nbPages) {
 						$paging2 .= $this->config['pagingSeparator'];
