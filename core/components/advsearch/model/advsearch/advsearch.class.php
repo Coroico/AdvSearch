@@ -338,7 +338,7 @@ class AdvSearch extends AdvSearchUtil{
 		$this->checkDisplayParams($displayedFields);
 
         // add advSearch css file
-        $this->modx->regClientCss($this->config['assetsUrl'].'css/advsearch.css');
+        if ($this->config['addCss'] == 1) $this->modx->regClientCss($this->config['assetsUrl'].'css/advsearch.css');
 
 		// results header
 		$infoOutput = $this->getResultInfo($this->searchString, $resultsCount);
