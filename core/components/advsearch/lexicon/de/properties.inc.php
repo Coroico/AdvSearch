@@ -18,78 +18,80 @@
  *
  * @package advsearch
  */
+ 
 /**
  * Properties (property descriptions) Lexicon Topic
  *
  * @package advsearch
  * @subpackage lexicon
+ * @language   German
+ * @author     M. Gartner | bitego
  */
 
 /* advsearchform properties */
-$_lang['advsearch.advsearchform_addCss_desc'] = 'If you would like to include or not the default css file in your pages automatically.';
-$_lang['advsearch.advsearchform_addJQuery_desc'] = 'If you would like to include or not jQuery library in your pages automatically (Before closure of HEAD tag or before the closure of BODY tag).';
-$_lang['advsearch.advsearchform_addJs_desc'] = 'If you would like to include or not the js scripts in your pages automatically (Before closure of HEAD tag or before the closure of BODY tag).';
-$_lang['advsearch.advsearchform_ajaxResultsId_desc'] = 'Ajax response page; Blank template page with AdvSearch snippet call.';
-$_lang['advsearch.advsearchform_asId_desc'] = 'Unique id for newSearch instance.';
-$_lang['advsearch.advsearchform_clearDefault_desc'] = 'Set this to 0 if you wouldn\'t like the clear default text feature.';
-$_lang['advsearch.advsearchform_debug_desc'] = 'Debug';
-$_lang['advsearch.advsearchform_help_desc'] = 'Add a help link near the search form';
-$_lang['advsearch.advsearchform_jsSearchForm_desc'] = 'Url where is located the js library used with the form (Fields validation, clearDefault, ...)';
-$_lang['advsearch.advsearchform_jsJQuery_desc'] = 'Url where is located the jquery javascript library.';
-$_lang['advsearch.advsearchform_landing_desc'] = 'The resource that the AdvSearch snippet is called on, that will display the results of the search';
-$_lang['advsearch.advsearchform_liveSearch_desc'] = 'LiveSearch mode. (Only with the ajax mode)';
-$_lang['advsearch.advsearchform_method_desc'] = 'The name of the REQUEST parameter that the search will use.';
-$_lang['advsearch.advsearchform_opacity_desc'] = 'Opacity of the search results window. [ 0. < float <= 1. ]';
-$_lang['advsearch.advsearchform_searchIndex_desc'] = 'The name of the REQUEST parameter that the search will use.';
-$_lang['advsearch.advsearchform_toPlaceholder_desc'] = 'Whether to set the output to directly return, or set to a placeholder with this property name.';
-$_lang['advsearch.advsearchform_tpl_desc'] = 'Chunk to style input form.';
-$_lang['advsearch.advsearchform_urlScheme_desc'] = 'Indicates in what format the URL is generated. (-1, full, abs, http, https)';
-$_lang['advsearch.advsearchform_withAjax_desc'] = 'Use this to display the search results using ajax.';
+$_lang['advsearch.advsearchform_addCss_desc']            = 'Soll die von AdvSearch mitgelieferte CSS Datei automatisch eingebunden werden.';
+$_lang['advsearch.advsearchform_addJQuery_desc']         = 'Soll die von AdvSearch mitgelieferte jQuery Bibliothek automatisch eingebunden werden. (vor dem schlie&szlig;enden HEAD oder BODY Tag).';
+$_lang['advsearch.advsearchform_addJs_desc']             = 'Sollen die von AdvSearch mitgelieferten JavaScript Dateien automatisch eingebunden werden. (vor dem schlie&szlig;enden HEAD oder BODY Tag).';
+$_lang['advsearch.advsearchform_ajaxResultsId_desc']     = 'Ajax Response Seite; leere Vorlage mit dem AdvSearch Snippet Aufruf.';
+$_lang['advsearch.advsearchform_asId_desc']              = 'Eindeutige ID f&uuml; neue Instanzen von AdvSearch.';
+$_lang['advsearch.advsearchform_clearDefault_desc']      = 'Stellen Sie diesen Eintrag auf 0, wenn Sie die automatische Clear Funktion f&uuml;r den standard Text im Suchfeld nicht verwenden m&ouml;chten.';
+$_lang['advsearch.advsearchform_debug_desc']             = 'Debug';
+$_lang['advsearch.advsearchform_help_desc']              = 'Hilfe Link im Suchformular anzeigen.';
+$_lang['advsearch.advsearchform_jsSearchForm_desc']      = 'Pfad (URL) zum JavaScript Library, welches f&uuml; das Suchformular verwendet werden soll. (Feld Validierung, clearDefault, usw.)';
+$_lang['advsearch.advsearchform_jsJQuery_desc']          = 'Pfad (URL) zum jQuery Library, welches f&uuml; AdvSearch verwendet werden soll.';
+$_lang['advsearch.advsearchform_landing_desc']           = 'Resource, welche f&uuml;r die Anzeige der Suchergebnisse verwendet werden soll (muss AdvSearch Snippet Aufruf enthalten).';
+$_lang['advsearch.advsearchform_liveSearch_desc']        = 'Live-Suche Modus. (nur im Ajax Modus)';
+$_lang['advsearch.advsearchform_method_desc']            = 'HTTP REQUEST Parameters welchen AdvSearch verwendet.';
+$_lang['advsearch.advsearchform_opacity_desc']           = 'Transparenz des Fensters f&uuml;r Suchergebnisse. [ 0. < float <= 1. ]';
+$_lang['advsearch.advsearchform_searchIndex_desc']       = 'HTTP REQUEST Parameters welchen AdvSearch verwendet.';
+$_lang['advsearch.advsearchform_toPlaceholder_desc']     = 'Soll die Ausgabe direkt zur&uuml;ck gegeben werden, oder ein Platzhalter mit diesem Namen verwendet werden.';
+$_lang['advsearch.advsearchform_tpl_desc']               = 'Chunk, welcher f&uuml;r die Anzeige des Eingabe-Formulars verwendet wird.';
+$_lang['advsearch.advsearchform_urlScheme_desc']         = 'Legt das Format f&uuml;r die generierte URL in den Suchergebnissen fest. (-1, full, abs, http, https)';
+$_lang['advsearch.advsearchform_withAjax_desc']          = 'Suchergebnisse unter Verwendung von Ajax anzeigen.';
 
 /* advsearch properties */
-$_lang['advsearch.advsearch_asId_desc'] = 'Unique id for newSearch instance.';
-$_lang['advsearch.advsearch_containerTpl_desc'] = 'The chunk that will be used to wrap all the search results, pagination and message.';
-$_lang['advsearch.advsearch_contexts_desc'] = 'The contexts to search. Comma separated context names.';
-$_lang['advsearch.advsearch_currentPageTpl_desc'] = 'The chunk to use for the current pagination link.';
-$_lang['advsearch.advsearch_debug_desc'] = 'Debug level.';
-$_lang['advsearch.advsearch_docindexPath_desc'] = 'The path under assets/files/ where are located Lucene document indexes.';
-$_lang['advsearch.advsearch_effect_desc'] = 'Effect name to use to display the window of results (mode ajax).';
-$_lang['advsearch.advsearch_engine_desc'] = 'Search engine selected.';
-$_lang['advsearch.advsearch_extractEllipsis_desc'] = 'String used to mark the beginning and the end of an extract when the sentence is cutting.';
-$_lang['advsearch.advsearch_extractLength_desc'] = 'Length of extract around the search words found - between 50 and 800 characters.';
-$_lang['advsearch.advsearch_extractTpl_desc'] = 'The chunk that will be used to wrap each extract.';
-$_lang['advsearch.advsearch_fields_desc'] = 'The list of fields from a resource available with search results.';
-$_lang['advsearch.advsearch_fieldPotency_desc'] = 'Potency per field to score and sort results. Defaults to 1 if not set.';
-$_lang['advsearch.advsearch_highlightClass_desc'] = 'The CSS class name to add to highlighted terms in results.';
-$_lang['advsearch.advsearch_highlightResults_desc'] = 'Whether or not to highlight the search term in results.';
-$_lang['advsearch.advsearch_highlightTag_desc'] = 'The html tag to wrap the highlighted term with in search results.';
-$_lang['advsearch.advsearch_ids_desc'] = 'A comma-separated list of IDs to restrict the search to.';
-$_lang['advsearch.advsearch_includeTVs_desc'] = 'Add TVs values to search results and set them as placeholders.';
-$_lang['advsearch.advsearch_init_desc'] = 'Defines if the search display all the results or none when the page is loaded at the first time';
-$_lang['advsearch.advsearch_hideContainers_desc'] = 'Search or not in any documents marked as a container.';
-$_lang['advsearch.advsearch_hideMenu_desc'] = 'Search in documents regardless if they are visible from the menus.';
-$_lang['advsearch.advsearch_libraryPath_desc'] = 'The path under assets/where are located external librairies.';
-$_lang['advsearch.advsearch_maxWords_desc'] = 'Maximum number of words for searching';
-$_lang['advsearch.advsearch_method_desc'] = 'The name of the REQUEST parameter that the search will use.';
-$_lang['advsearch.advsearch_minChars_desc'] = 'Minimum number of characters to require for a word to be valid for searching.';
-$_lang['advsearch.advsearch_moreResults_desc'] = 'The document id of the page you want the more results link to point to.';
-$_lang['advsearch.advsearch_moreResultsTpl_desc'] = 'The chunk to use for the More results link.';
-$_lang['advsearch.advsearch_offsetIndex_desc'] = 'The name of the REQUEST parameter to use for the pagination offset.';
-$_lang['advsearch.advsearch_output_desc'] = 'Output type.';
-$_lang['advsearch.advsearch_pageTpl_desc'] = 'The chunk to use for a pagination link.';
-$_lang['advsearch.advsearch_pagingType_desc'] = 'Type of pagination.';
-$_lang['advsearch.advsearch_paging1Tpl_desc'] = 'The chunk to use for a pagination type 1';
-$_lang['advsearch.advsearch_paging2Tpl_desc'] = 'The chunk to use for a pagination type 2';
-$_lang['advsearch.advsearch_pagingSeparator_desc'] = 'String as page number links separator. Used with pagingType0.';
-$_lang['advsearch.advsearch_perPage_desc'] = 'The number of search results to show per page.';
-$_lang['advsearch.advsearch_placeholderPrefix_desc'] = 'prefix of global placeholders.';
-$_lang['advsearch.advsearch_queryHook_desc'] = 'queryHook to change the default query.';
-$_lang['advsearch.advsearch_sortby_desc'] = 'comma separated list of couple "field [ASC|DESC]" to sort by.';
-$_lang['advsearch.advsearch_showExtract_desc'] = 'Maximum number of extracts displayed for each search result followed by the csv list of fields where to search terms to highlight.';
-$_lang['advsearch.advsearch_searchIndex_desc'] = 'The name of the REQUEST parameter that the search will use.';
-$_lang['advsearch.advsearch_toPlaceholder_desc'] = 'Whether to set the output to directly return, or set to a placeholder with this property name.';
-$_lang['advsearch.advsearch_tpl_desc'] = 'The chunk that will be used to display the content of each search result.';
-$_lang['advsearch.advsearch_urlScheme_desc'] = 'Indicates in what format the URL is generated. (-1, full, abs, http, https)';
-$_lang['advsearch.advsearch_withFields_desc'] = 'Define which fields are used for the search in fields of a resource';
-$_lang['advsearch.advsearch_withTVs_desc'] = 'Define which TVs are used for the search in TVs.';
-
+$_lang['advsearch.advsearch_asId_desc']                  = 'Eindeutige ID f&uuml; neue Instanzen von AdvSearch.';
+$_lang['advsearch.advsearch_containerTpl_desc']          = 'Chunk, welcher als Wrapper f&uuml;r Such-Ergebnisse, Seitennummern und Nachrichten verwendet wird.';
+$_lang['advsearch.advsearch_contexts_desc']              = 'Kommaseparierte Liste von Context-Namen in denen gesucht werden soll.';
+$_lang['advsearch.advsearch_currentPageTpl_desc']        = 'Chunk, welcher f&uuml;r die Anzeige des aktuellen Seitennummern-Links verwendet wird.';
+$_lang['advsearch.advsearch_debug_desc']                 = 'Debug Level.';
+$_lang['advsearch.advsearch_docindexPath_desc']          = 'Pfad innerhalb von assets/files/ zur Ablage der Lucene Dokument-Indizes.';
+$_lang['advsearch.advsearch_effect_desc']                = 'Name des Effekts f&uuml;r die Darstellung des Ergebnisfensters (Ajax Modus).';
+$_lang['advsearch.advsearch_engine_desc']                = 'Verwendete Such-Engine.';
+$_lang['advsearch.advsearch_extractEllipsis_desc']       = 'String der am Beginn und Ende von Textausz&uuml;gen verwendet wird.';
+$_lang['advsearch.advsearch_extractLength_desc']         = 'L&auml;ge der Textausz&uuml;ge (zwischen 50 und 800 Zeichen).';
+$_lang['advsearch.advsearch_extractTpl_desc']            = 'Chunk, welcher als Wrapper f&uuml;r die Anzeige von Textausz&uuml;gen verwendet wird.';
+$_lang['advsearch.advsearch_fields_desc']                = 'Liste aller Resource-Felder, die f&uuml;r die Suche herangezogen werden.';
+$_lang['advsearch.advsearch_fieldPotency_desc']          = 'Wertigkeit pro Feld f&uuml;r die Sortierung von Suchergebnissen. (Standardwert = 1 wenn nicht gesetzt)';
+$_lang['advsearch.advsearch_highlightClass_desc']        = 'CSS Klasse f&uuml;r hervorgehobebne Suchbegriffe in Suchergebnissen.';
+$_lang['advsearch.advsearch_highlightResults_desc']      = 'Sollen Suchbegriffe in den Suchergebnissen hervorgehoben werden.';
+$_lang['advsearch.advsearch_highlightTag_desc']          = 'HTML Tag als Wrapper f&uuml;r hervorgehobene Suchbegriffe in Suchergebnissen.';
+$_lang['advsearch.advsearch_ids_desc']                   = 'Kommaseparierte Liste von Resource-IDs auf die die Suche beschr&auml;nkt werden soll.';
+$_lang['advsearch.advsearch_includeTVs_desc']            = 'TV Werte zu Suchergebnissen hinzuf&uuml;gen und diese als Platzhalter festlegen.';
+$_lang['advsearch.advsearch_init_desc']                  = 'Legt fest ob die Suche alle Ergebnisse anzeigt oder keine, wenn die Seite zum ersten Mal geladen wird.';
+$_lang['advsearch.advsearch_hideContainers_desc']        = 'Suche in Resoucen, die als Conainer markiert sind.';
+$_lang['advsearch.advsearch_hideMenu_desc']              = 'Suche in Resoucen, die nicht in Men&uuml;s angezeigt werden sollen.';
+$_lang['advsearch.advsearch_libraryPath_desc']           = 'Pfad innerhalb von assets/ zur Einbindung externer Bibliotheken.';
+$_lang['advsearch.advsearch_maxWords_desc']              = 'Maximale Anzahl der Suchbegriffe';
+$_lang['advsearch.advsearch_method_desc']                = 'HTTP REQUEST Parameters welchen AdvSearch verwendet.';
+$_lang['advsearch.advsearch_minChars_desc']              = 'Minimale Anzahl der Zeichen f&uuml;r einen Suchbegriff.';
+$_lang['advsearch.advsearch_moreResults_desc']           = 'ID der Resource f&uuml;r den Link "Weitere Suchergebnisse".';
+$_lang['advsearch.advsearch_moreResultsTpl_desc']        = 'Chunk, welcher f&uuml;r die Anzeige des Links f&uuml;r "Weitere Suchergebnisse" verwendet wird.';
+$_lang['advsearch.advsearch_offsetIndex_desc']           = 'HTTP REQUEST Parameter welcher f&uuml;r das Seitennummern-Offset verwendet wird.';
+$_lang['advsearch.advsearch_output_desc']                = 'Ausgabe Typ.';
+$_lang['advsearch.advsearch_pageTpl_desc']               = 'Chunk, welcher f&uuml;r die Seitennummern-Links verwendet wird.';
+$_lang['advsearch.advsearch_pagingType_desc']            = 'Art der Seitennummerierung.';
+$_lang['advsearch.advsearch_paging1Tpl_desc']            = 'Chunk, welcher f&uuml;r die Seitennummerierung Typ 1 verwendet wird.';
+$_lang['advsearch.advsearch_paging2Tpl_desc']            = 'Chunk, welcher f&uuml;r die Seitennummerierung Typ 2 verwendet wird.';
+$_lang['advsearch.advsearch_pagingSeparator_desc']       = 'String, welcher als Trenner f&uuml;r Seitennummern-Links verwendet wird. (nur bei pagingType0)';
+$_lang['advsearch.advsearch_perPage_desc']               = 'Anzahl der Ergebnisse, die pro Seite angezeigt werden.';
+$_lang['advsearch.advsearch_placeholderPrefix_desc']     = 'Pr&auml;fix f&uuml;r globale Platzhalter.';
+$_lang['advsearch.advsearch_queryHook_desc']             = 'queryHook zur &Auml;nderung der standard Abfrage.';
+$_lang['advsearch.advsearch_sortby_desc']                = 'Komma separierte Liste von Feldern nach welchen sortiert werden soll. (Schreibweise: "Feldname [ASC|DESC]")';
+$_lang['advsearch.advsearch_showExtract_desc']           = 'Maximale Anzahl der Textausz&uuml;ge welche f&uuml;r Suchergebnisse angezeigt werden - gefolgt von der CSV Liste der Felder, worin Suchbegriffe hervorgehoben werden sollen.';
+$_lang['advsearch.advsearch_searchIndex_desc']           = 'HTTP REQUEST Parameter welchen AdvSearch verwendet.';
+$_lang['advsearch.advsearch_toPlaceholder_desc']         = 'Soll die Ausgabe direkt zur&uuml;ck gegeben werden, oder ein Platzhalter mit dem eingetragenen Namen verwendet werden.';
+$_lang['advsearch.advsearch_tpl_desc']                   = 'Chunk, welcher f&uuml;r die Anzeige des Inhaltes von Suchergebnissen verwendet wird.';
+$_lang['advsearch.advsearch_urlScheme_desc']             = 'Legt das Format f&uuml;r die generierte URL in den Suchergebnissen fest. (m&ouml;gliche Werte: -1, full, abs, http, https)';
+$_lang['advsearch.advsearch_withFields_desc']            = 'Festlegen der Resource-Felder die f&uuml;r die Suche herangezogen werden sollen.';
+$_lang['advsearch.advsearch_withTVs_desc']               = 'Festlegen der Template Variablen die f&uuml;r die Suche herangezogen werden sollen.';

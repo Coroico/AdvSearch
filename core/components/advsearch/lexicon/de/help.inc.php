@@ -20,121 +20,117 @@
  *
  * WARNING: The closing EOD; must be followed by a newline.
  */
+ 
 /**
  * Help Lexicon Topic
  *
  * @package advsearch
  * @subpackage lexicon
+ * @language   German
+ * @author     M. Gartner | bitego
  */
 
 $_lang['advsearch.help'] = <<<EOD
 <div id="advsea-help-content">
-<h1>
-	Advanced Search - Query Syntax
-</h1>
+<h1>Advanced Search - Hilfe</h1>
 <div id="minitoc-area">
 <ul class="minitoc">
 <li>
-<a href="[[~[[*id]]]]#Intro">Introduction</a>
+<a href="[[~[[*id]]]]#intro">Einf&uuml;hrung</a>
 </li>
 <li>
-<a href="[[~[[*id]]]]#Terms">Terms</a>
+<a href="[[~[[*id]]]]#terms">Begriffe</a>
 </li>
 <li>
-<a href="[[~[[*id]]]]#Wildcard Searches">Wildcard Searches</a>
+<a href="[[~[[*id]]]]#wildcardsearches">Platzhalter Suche (Joker Zeichen)</a>
 </li>
 <li>
-<a href="[[~[[*id]]]]#Boolean operators">Boolean Operators</a>
+<a href="[[~[[*id]]]]#booleanoperators">Logische Operatoren</a>
 <ul class="minitoc">
 <li>
-<a href="[[~[[*id]]]]#OR"> &#79;&#82; </a>
+<a href="[[~[[*id]]]]#or"> &#79;&#82; </a>
 </li>
 <li>
-<a href="[[~[[*id]]]]#AND"> AND </a>
+<a href="[[~[[*id]]]]#and"> AND </a>
 </li>
 <li>
-<a href="[[~[[*id]]]]#NOT"> NOT </a>
+<a href="[[~[[*id]]]]#not"> NOT </a>
 </li>
 </ul>
 </li>
 <li>
-<a href="[[~[[*id]]]]#Grouping">Grouping</a>
+<a href="[[~[[*id]]]]#Grouping">Gruppieren von Suchbegriffen</a>
 </li>
 </ul>
 </div>
 
-<a name="Intro"></a>
-<h2 class="boxed">Introduction</h2>
+<h2 class="boxed" id="intro">Einf&uuml;hrung</h2>
 
 <div class="section">
-<p>Find below the syntax of AdvSearch to set up powerfull search queries.</p>
+<p>Untenstehend finden Sie eine Beschreibung der Syntax von Advanced Search um m&auml;chtige Suchabfragen zu erstellen.</p>
 </div>
 
-<a name="N10032"></a><a name="Terms"></a>
-<h2 class="boxed">Terms</h2>
+<a name="N10032"></a>
+<h2 class="boxed" id="terms">Begriffe</h2>
+
 <div class="section">
-<p>A query is broken up into terms and operators. There are two types of terms: Single Terms and Phrases.</p>
-<p>A Single Term is a single word such as "test" or "hello".</p>
-<p>A Phrase is a group of words surrounded by double quotes such as "hello dolly".</p>
-<p>Multiple terms can be combined together with Boolean operators to form a more complex query (see below).</p>
+<p>Eine Abfrage wird unterteilt in Suchbegriffe und Operatoren. Es gibt zwei Arten von Suchbegriffen: einzelne Suchbegriffe und Phrasen.</p>
+<p>Ein einzelner Suchbegriff ist ein einzelnes Wort wie zB. "Welt" oder "Hallo".</p>
+<p>Eine Phrase ist eine Gruppe von W&ouml;rtern welche in Anf&uuml;hrungszeichen steht wie zB. "Hallo Welt".</p>
+<p>Mehrere Suchbegriffe k&ouml;nnen mittels sogenannten Boolscher (oder logischer) Operatoren zu einer komplexeren Suche kombiniert werden (N&auml;heres weiter Unten).</p>
 </div>
 
-<a name="N1006D"></a><a name="Wildcard Searches"></a>
-<h2 class="boxed">Wildcard Searches</h2>
-<p>AdvSearch supports single and multiple character wildcard searches within single terms(not within phrase queries).</p>
-<p>To perform a single character wildcard search use the "?" symbol.</p>
-<p>To perform a multiple character wildcard search use the "*" symbol.</p>
-<p>The single character wildcard search looks for terms that match that with the single character replaced. For example, to search for "text" or "test" you can use the search:</p>
-<pre class="code">te?t</pre>
-<p>Multiple character wildcard searches looks for 0 or more characters. For example, to search for test, tests or tester, you can use the search: </p>
-<pre class="code">test*</pre>
-<p>You can also use the wildcard searches in the middle of a term.</p>
-<pre class="code">te*t</pre>
-<p>Note: You cannot use a * or ? symbol as the first character of a search.</p>
-
-<a name="N100FA"></a><a name="Boolean operators"></a>
-<h2 class="boxed">Boolean Operators</h2>
+<a name="N1006D"></a>
+<h2 class="boxed" id="wildcardsearches">Platzhalter Suche (Joker Zeichen)</h2>
 <div class="section">
-<p>Boolean operators allow terms to be combined through logic operators.
-        AdvSearch supports AND, OR, and NOT as Boolean operators (Note: Boolean operators must be ALL CAPS).</p>
-
-<a name="N10103"></a><a name="OR"></a>
-<h3 class="boxed">OR</h3>
-<p>The OR operator is the default conjunction operator. This means that if there is no Boolean operator between two terms, the OR operator is used.
-        The OR operator links two terms and finds a matching document if either of the terms exist in a document. This is equivalent to a union using sets.
-        The symbol || can be used in place of the word OR.</p>
-<p>To search for documents that contain either "jakarta apache" or just "jakarta" use the query:</p>
-<pre class="code">"jakarta apache" jakarta</pre>
-<p>or</p>
-<pre class="code">"jakarta apache" OR jakarta</pre>
-
-<a name="N10116"></a><a name="AND"></a>
-<h3 class="boxed">AND</h3>
-<p>The AND operator matches documents where both terms exist anywhere in the text of a single document.
-        This is equivalent to an intersection using sets. The symbol &amp;&amp; can be used in place of the word AND.</p>
-<p>To search for documents that contain "jakarta apache" and "Apache Lucene" use the query: </p>
-<pre class="code">"jakarta apache" AND "Apache Lucene"</pre>
-
-<a name="N10136"></a><a name="NOT"></a>
-<h3 class="boxed">NOT</h3>
-<p>The NOT operator excludes documents that contain the term after NOT.
-        This is equivalent to a difference using sets. The symbol ! can be used in place of the word NOT.</p>
-<p>To search for documents that contain "jakarta apache" but not "Apache Lucene" use the query: </p>
-<pre class="code">"jakarta apache" NOT "Apache Lucene"</pre>
-<p>Note: The NOT operator cannot be used with just one term. For example, the following search will return no results:</p>
-<pre class="code">NOT "jakarta apache"</pre>
+<p>Advanced Search unterst&uuml;tzt den Einsatz von Einfach- oder Mehrfachplatzhaltern innerhalb eines Suchbegriffes (ausgenommen innerhalb von Phrasen).</p>
+<p>Um eine Einfachplatzhalter-Suche auszuf&uuml;hren, verwenden Sie das "?" Zeichen - f&uuml;r die Mehrfachplatzhalter-Suche das "*" Zeichen.</p>
+<p>Die Einfachplatzhalter-Suche findet alle Begriffe nach Ersatz des Platzhalterzeichens mit einem einzelnen beliebigen Buchstaben. Um zB. gleichzeitig nach den Begriffen "Text" und "Test" zu Suchen, kann folgende Abfrage verwendet werden:</p>
+<pre class="code">Te?t</pre>
+<p>Mehrfachplatzhalter ersetzen 0 oder mehr Zeichen innerhalb eines Suchbegriffes. Um zB. nach den Begriffen "Test", "Tests" oder "Testfahrzeug" zu suchen, verwenden Sie folgende Abfrage:</p>
+<pre class="code">Test*</pre>
+<p>Sie k&ouml;nnen Platzhalter auch innerhalb von Suchbegriffen verwenden.</p>
+<pre class="code">Te*t</pre>
+<p>Hinweis: Sie k&ouml;nnen die Platzhalter-Symbole * oder ? nicht als erstes Zeichen einer Sucheingabe verwenden.</p>
 </div>
 
-<a name="N1015D"></a><a name="Grouping"></a>
-<h2 class="boxed">Grouping</h2>
+<a name="N100FA"></a>
+<h2 class="boxed" id="booleanoperators">Logische Operatoren</h2>
 <div class="section">
-<p>AdvSearch supports using parentheses to group clauses to form sub queries. This can be very useful if you want to control the boolean logic for a query.</p>
-<p>To search for either "jakarta" or "apache" and "website" use the query:</p>
-<pre class="code">(jakarta OR apache) AND website</pre>
-<p>This eliminates any confusion and makes sure you that website must exist and either term jakarta or apache may exist.</p>
+<p>Logische Operatoren erm&ouml;glichen die Kombination von Suchbegriffen. Advanced Search unterst&uuml;tzt AND, OR, und NOT als Logische Operatoren (Anmerkung: Logische Operatoren m&uuml;ssen immer in GROSSBUCHSTABEN geschrieben werden).</p>
+
+<a name="N10103"></a>
+<h3 class="boxed" id="or">OR</h3>
+<p>Der OR Operator ist der Standard-Operator. Wir zwischen zwei Suchbegriffen kein Operator angef&uuml;hrt, verwendet Advanced Search immer automatisch den OR Operator. Der OR Operator verkn&uuml;pft zwei Suchbegriffe und findet Dokumente die mindestens einen der angef&uuml;hrten Suchbegriffe enthalten. Anstelle des Schl&uuml;sselwortes OR kann auch das Symbol || (doppeltes Pipe Zeichen) verwendet werden.</p>
+<p>Um nach Dokumenten zu suchen die entweder "Wien Berlin" oder nur "Wien" enthalten verwenden Sie folgende Abfrage:</p>
+<pre class="code">"Wien Berlin" Wien</pre>
+<p>oder</p>
+<pre class="code">"Wien Berlin" OR Wien</pre>
+
+<a name="N10116"></a>
+<h3 class="boxed" id="and">AND</h3>
+<p>Der AND Operator findet Dokumente in denen beide Suchbegriffe vorhanden sind. Anstelle des Schl&uuml;sselwortes AND kann auch das Symbol &amp;&amp; verwendet werden.</p>
+<p>Um nach Dokumenten zu suchen die "Wien Berlin" und "Berlin Rom" enthalten verwenden Sie folgende Abfrage: </p>
+<pre class="code">"Wien Berlin" AND "Berlin Rom"</pre>
+
+<a name="N10136"></a>
+<h3 class="boxed" id="not">NOT</h3>
+<p>Der NOT Operator schlie&szlig;t Dokumente aus, die den Suchbegriff der dem Schl&uuml;sselwort NOT folgt enthalten. Anstelle des Schl&uuml;sselwortes NOT kann auch das Symbol ! (Ausrufungszeichen) verwendet werden.</p>
+<p>Um nach Dokumenten zu suchen die zwar "Wien Berlin" enthalten jedoch nicht "Wien Rom" verwenden Sie folgende Abfrage: </p>
+<pre class="code">"Wien Berlin" NOT "Wien Rom"</pre>
+<p>Anmerkung: Der NOT Operator kann nicht in Verbindung mit einem einzelnen Suchbegriff verwendet werden. Das folgende Suchbeispiel wird keine Ergebnisse zur&uuml;ckliefern:</p>
+<pre class="code">NOT "Wien Berlin"</pre>
 </div>
 
+<a name="N1015D"></a>
+<h2 class="boxed" id="grouping">Gruppieren von Suchbegriffen</h2>
+<div class="section">
+<p>Advanced Search unterst&uuml;tzt die Verwendung von Klammern um Abfragen zu Gruppieren und Unter-Abfragen zu erstellen. Dies kann n&uuml;tzlich sein um logische Abfragen zu besser zu kontrollieren.</p>
+<p>Um nach Dokumenten zu suchen die entweder "Wien" oder "Berlin" und "Rom" enthalten verwenden Sie folgende Abfrage:</p>
+<pre class="code">(Wien OR Berlin) AND Rom</pre>
+<p>Dies schlie&szlig;t Unklarheiten in der Abfrage aus und stellt sicher, dass der Begriffe "Rom" zwingend enthalten sein muss und zus&auml;tzlich entweder "Wien" oder "Berlin".</p>
+</div>
 </div>
 <!--+ end content +-->
 EOD;
-//don't remove this line. The closing EOD; must be followed by a newline. 
+//don't remove this line. The closing EOD; must be followed by a newline.

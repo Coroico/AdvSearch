@@ -18,31 +18,34 @@
  *
  * @package advsearch
  */
+ 
 /**
  * Default Lexicon Topic
  *
  * @package    advsearch
  * @subpackage lexicon
  * @language   German
+ * @author     M. Gartner | bitego
  */
 
+/* messages displayed by component (e.g. error messages, prompts, etc.) */
 $_lang['advsearch']                             = 'AdvSearch';
-$_lang['advsearch.menu_desc']                   = 'Search dynamic contents and filtering results.';
+$_lang['advsearch.menu_desc']                   = 'Dynamische Inhalte durchsuchen und Ergebnisse filtern.';
 
-$_lang['advsearch.no_results']                  = 'There were no search results. Please try using more general terms to get more results.';
-$_lang['advsearch.search']                      = 'Search';
-$_lang['advsearch.results_text_found_plural']   = '[[+count]] results found for "[[+text]]"';
-$_lang['advsearch.results_text_found_singular'] = '[[+count]] result found for "[[+text]]"';
-$_lang['advsearch.results_found_plural']        = '[[+count]] results found';
-$_lang['advsearch.results_found_singular']      = '[[+count]] result found';
-$_lang['advsearch.result_pages']                = 'Result pages:';
-$_lang['advsearch.box_text']                    = 'Search here...';
-$_lang['advsearch.help_title']                  = 'More information about advanced search';
-$_lang['advsearch.invalid_query']               = 'Inconsistent or invalid query';
-$_lang['advsearch.maxwords']                    = 'Maximum number of words for searching: [[+maxwords]]';
-$_lang['advsearch.minchars']                    = 'Search with "[[+minterm]]" is invalid. Minimum number of characters allowed for a search term: [[+minchars]] ';
-$_lang['advsearch.more_results']                = 'Show more results';
-$_lang['advsearch.goto_page']                   = 'Go to page  %d';
-$_lang['advsearch.previous']                    = 'Previous';
-$_lang['advsearch.next']                        = 'Next';
-$_lang['advsearch.elapsed_time']                = 'Server elapsed time: ';
+$_lang['advsearch.no_results']                  = 'Die Suche erzielte keine Treffer. Bitte verwenden Sie allgemeinere Such-Begriffe um Ergebnisse zu erzielen.';
+$_lang['advsearch.search']                      = 'Suchen';
+$_lang['advsearch.results_text_found_plural']   = '[[+count]] Treffer f&uuml;r "[[+text]]"';
+$_lang['advsearch.results_text_found_singular'] = '[[+count]] Treffer f&uuml;r "[[+text]]"';
+$_lang['advsearch.results_found_plural']        = '[[+count]] Treffer';
+$_lang['advsearch.results_found_singular']      = '[[+count]] Treffer';
+$_lang['advsearch.result_pages']                = 'Ergebnis Seiten:';
+$_lang['advsearch.box_text']                    = 'Suchtext...';
+$_lang['advsearch.help_title']                  = 'Weitere Informationen zur erweiterten Suche';
+$_lang['advsearch.invalid_query']               = 'Inkonsistente oder fehlerhafte Abfrage';
+$_lang['advsearch.maxwords']                    = 'Maximale Anzahl der Suchbegriffe: [[+maxwords]]';
+$_lang['advsearch.minchars']                    = 'Suche mit "[[+minterm]]" ist ung&uuml;tig. Minimal zul&auml;ssige Anzahl der Zeichen f&uuml;r Suchbegriffe: [[+minchars]] ';
+$_lang['advsearch.more_results']                = 'Weitere Ergebnisse anzeigen';
+$_lang['advsearch.goto_page']                   = 'Gehe zu Seite %d';
+$_lang['advsearch.previous']                    = 'Zur&uuml;ck';
+$_lang['advsearch.next']                        = 'Weiter';
+$_lang['advsearch.elapsed_time']                = 'Zeit f&uuml;r Abfrage: ';
