@@ -713,6 +713,7 @@ class AdvSearch extends AdvSearchUtil {
      */
     private function _getExtracts($text, $nbext = 1, $extractLength = 200, $searchTerms = array(), $tpl = '', $ellipsis = '...') {
         $text = trim(preg_replace('/\s+/', ' ', $this->sanitize($text)));
+        $textLength = mb_strlen($text);
         if (empty($text))
             return '';
 
@@ -721,8 +722,9 @@ class AdvSearch extends AdvSearchUtil {
         $nbTerms = count($searchTerms);
         if (!$nbTerms) {
             // with an empty searchString - show as introduction the first characters of the text
-            if (!empty($text)) {
-                $pos = min(mb_strpos($text, ' ', $extractLength - 1, $encoding), mb_strpos($text, '.', $extractLength - 1, $encoding));
+            if (($extractLength > 0) && !empty($text)) {
+				$offset = ($extractLength  <  $textLength) ? $extractLength - 1 : $textLength - 1;
+                $pos = min(mb_strpos($text, ' ', $offset, $encoding), mb_strpos($text, '.', $offset, $encoding));
                 if ($pos)
                     $intro = rtrim(mb_substr($text, 0, $pos, $encoding), $trimchars) . $ellipsis;
                 else
@@ -736,7 +738,6 @@ class AdvSearch extends AdvSearchUtil {
         // get extracts
         $extracts = array();
         $extractLength2 = $extractLength / 2;
-        $textLength = mb_strlen($text);
         $rank = 0;
 
         // search the position of all search terms
