@@ -712,21 +712,22 @@ class AdvSearch extends AdvSearchUtil {
      *      a lucene regexp expression using ? or *
      */
     private function _getExtracts($text, $nbext = 1, $extractLength = 200, $searchTerms = array(), $tpl = '', $ellipsis = '...') {
+
+		mb_internal_encoding($this->config['charset']); // set internal encoding to UTF-8 for multi-bytes functions
+
         $text = trim(preg_replace('/\s+/', ' ', $this->sanitize($text)));
         $textLength = mb_strlen($text);
-        if (empty($text))
-            return '';
+        if (empty($text)) return '';
 
-        $encoding = $this->config['charset'];
         $trimchars = "\t\r\n -_()!~?=+/*\\,.:;\"'[]{}`&";
         $nbTerms = count($searchTerms);
         if (!$nbTerms) {
             // with an empty searchString - show as introduction the first characters of the text
             if (($extractLength > 0) && !empty($text)) {
 				$offset = ($extractLength  <  $textLength) ? $extractLength - 1 : $textLength - 1;
-                $pos = min(mb_strpos($text, ' ', $offset, $encoding), mb_strpos($text, '.', $offset, $encoding));
+                $pos = min(mb_strpos($text, ' ', $offset), mb_strpos($text, '.', $offset));
                 if ($pos)
-                    $intro = rtrim(mb_substr($text, 0, $pos, $encoding), $trimchars) . $ellipsis;
+                    $intro = rtrim(mb_substr($text, 0, $pos), $trimchars) . $ellipsis;
                 else
                     $intro = $text;
             }
