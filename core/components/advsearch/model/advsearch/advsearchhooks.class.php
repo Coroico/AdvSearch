@@ -181,7 +181,6 @@ class AdvSearchHooks {
             switch ($oper) {
                 case 'IN':
                 case 'NOT IN':  // operator with a list of values wrapped by parenthesis
-                    $val = (!is_numeric($val)) ? "'{$val}'" : $val;
                     $condition = "({$classField} {$oper}({$val}))";
                     break;
                 case 'FIND':
