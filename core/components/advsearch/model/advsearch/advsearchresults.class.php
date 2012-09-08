@@ -623,7 +623,7 @@ class AdvSearchResults extends AdvSearchUtil {
         if ($this->config['fieldPotency'] != 'createdon:1') {
             foreach ($results as $key => $row) {
                 $score[$key] = $row['score'];
-                array_multisort($score, SORT_DESC, $results);
+				if (count($results) == count($score)) array_multisort($score, SORT_DESC, $results);
             }
         } else if ($this->config['sortby']) {
             foreach ($this->sortbyField as $field) {
