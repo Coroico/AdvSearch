@@ -692,7 +692,8 @@ class AdvSearchResults extends AdvSearchUtil {
             $replacement = $this->modx->getOption('core_path', null, MODX_CORE_PATH);
             $this->mainClass = $this->queryHook['main']['class'];  // main class
             $this->queryHook['main']['packagePath'] = str_replace($pattern, $replacement, $this->queryHook['main']['packagePath']);
-            $this->modx->addPackage($this->queryHook['main']['package'], $this->queryHook['main']['packagePath']); // add package
+			$tablePrefix = isset($this->queryHook['main']['tablePrefix']) ? $this->queryHook['main']['tablePrefix'] : '';
+            $this->modx->addPackage($this->queryHook['main']['package'], $this->queryHook['main']['packagePath'], $tablePrefix); // add package
             $this->primaryKey = $this->modx->getPK($this->mainClass); // get primary key
         }
 
@@ -942,7 +943,8 @@ class AdvSearchResults extends AdvSearchUtil {
                     $joinedClass = $joined['class'];
                     // add package
                     $joined['packagePath'] = str_replace($pattern, $replacement, $joined['packagePath']);
-                    $this->modx->addPackage($joined['package'], $joined['packagePath']);
+					$tablePrefix = isset($joined['tablePrefix']) ? $joined['tablePrefix'] : '';
+					$this->modx->addPackage($joined['package'],$joined['packagePath'], $tablePrefix);
                     // initialize and add joined displayed fields
                     if (!empty($joined['withFields'])) {
                         $joinedWhereFields = array_map('trim', explode(',', $joined['withFields']));    // fields of joined table where to do the search
