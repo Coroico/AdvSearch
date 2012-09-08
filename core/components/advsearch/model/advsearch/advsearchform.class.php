@@ -92,6 +92,8 @@ class AdvSearchForm extends AdvSearchUtil {
             'liveSearch' => $this->config['liveSearch'],
             'resultsWindow' => $resultsWindow
         );
+		if ($this->config['liveSearch']) $placeholders['liveSearch'] = 1;
+		else $placeholders['liveSearch'] = 0;
 
         // set the form into a placeholder if requested
         $output = $this->processChunk($this->config['tpl'], $placeholders);
