@@ -960,22 +960,23 @@ class AdvSearchResults extends AdvSearchUtil {
                         }
                     }
 
-                    foreach ($joinedWhereFields as & $joinedWhereField)
-                        $joinedWhereField = $this->modx->escape($joinedClass) . '.' . $this->modx->escape($joinedWhereField);
+					$joinedAlias = isset($joined['alias']) ? $joined['alias'] : $joinedClass;
+					foreach($joinedWhereFields as & $joinedWhereField) 
+						$joinedWhereField = $this->modx->escape($joinedAlias) . '.' . $this->modx->escape($joinedWhereField);
                     $this->joinedWhereFields = array_merge($this->joinedWhereFields, $joinedWhereFields);
                     // add joined fields
-                    $c->select($this->modx->getSelectColumns($joinedClass, $joinedClass, "{$joinedClass}_", $joinedFields));
-                    foreach ($joinedFields as & $joinedField)
-                        $joinedField = "{$joinedClass}_{$joinedField}"; // all the fields of joined class are prefixed by classname_
+					$c->select($this->modx->getSelectColumns($joinedClass,$joinedAlias,"{$joinedAlias}_",$joinedFields));
+					foreach($joinedFields as & $joinedField) 
+						$joinedField = "{$joinedAlias}_{$joinedField}"; // all the fields of joined class are prefixed by classname_  
                     $this->joinedFields = array_merge($this->joinedFields, $joinedFields);
                     // add left join
                     list($leftCriteria, $rightCriteria) = array_map('trim', explode('=', $joined['joinCriteria']));
                     $leftCriteriaElts = array_map('trim', explode('.', $leftCriteria));
-                    $leftCriteria = (count($leftCriteriaElts) == 1) ? "`{$joinedClass}`.`{$leftCriteriaElts[0]}`" : "`{$leftCriteriaElts[0]}`.`{$leftCriteriaElts[1]}`";
+					$leftCriteria = (count($leftCriteriaElts) == 1) ? "`{$joinedAlias}`.`{$leftCriteriaElts[0]}`" : "`{$leftCriteriaElts[0]}`.`{$leftCriteriaElts[1]}`";
                     $rightCriteriaElts = array_map('trim', explode('.', $rightCriteria));
-                    $rightCriteria = (count($rightCriteriaElts) == 1) ? "`{$joinedClass}`.`{$rightCriteriaElts[0]}`" : "`{$rightCriteriaElts[0]}`.`{$rightCriteriaElts[1]}`";
+					$rightCriteria = (count($rightCriteriaElts) == 1) ? "`{$joinedAlias}`.`{$rightCriteriaElts[0]}`" : "`{$rightCriteriaElts[0]}`.`{$rightCriteriaElts[1]}`";
                     $joined['joinCriteria'] = "{$leftCriteria} = {$rightCriteria}";
-                    $c->leftJoin($joinedClass, $joinedClass, $joined['joinCriteria']);
+					$c->leftJoin($joinedClass,$joinedAlias,$joined['joinCriteria']);
                     // restrict search with a where condition on joined resource
                     if (!empty($joined['where'])) {
                         if (!is_array($joined['where']))
