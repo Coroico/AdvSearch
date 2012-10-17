@@ -174,16 +174,24 @@ class AdvSearch extends AdvSearchUtil{
         else $searchString = $defaultString;
 
         if (!empty($searchString)){
-			// load the zend lucene library
-			require_once $this->config['libraryPath'].'Zend/Search/Lucene.php';
-			// parse query
-			$searchQuery = Zend_Search_Lucene_Search_QueryParser::parse($searchString,$this->config['charset']);
-			// valid maxwords and minchars
-			$valid = $this->validQuery($searchQuery, true, $msgerr);
-			if (!$valid) return false;
-
-            $this->searchString = $searchString;
-			$this->searchQuery = $searchQuery;
+		// load the zend lucene library
+		$file = $this->config['libraryPath'].'Zend/Search/Lucene.php';
+			
+		if(file_exists($file)){
+                	require_once $file;
+                	// parse query
+                	$searchQuery = Zend_Search_Lucene_Search_QueryParser::parse($searchString,$this->config['charset']);
+                	// valid maxwords and minchars
+                	$valid = $this->validQuery($searchQuery, true, $msgerr);
+                	if (!$valid) return false;
+    
+                	$this->searchString = $searchString;
+                	$this->searchQuery = $searchQuery;
+                
+		} else {
+			$this->modx->log(modX::LOG_LEVEL_ERROR,'[AdvSearch] Required library not found at '.$file.'.');
+			return false;
+		}
         }
         else {
             // set the default value
