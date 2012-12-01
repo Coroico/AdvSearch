@@ -2,9 +2,9 @@
 /**
  * Mycomponent pre-install script
  *
- * Copyright 2011 Coroico <coroico@wangba.fr>
+ * Copyright 2012 Coroico <coroico@wangba.fr>
  * @author Coroico <coroico@wangba.fr>
- * 14/08/2011
+ * 28/11/2012
  *
  * Mycomponent is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free

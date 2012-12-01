@@ -14,7 +14,7 @@ Thanks for using AdvSearch!
 
 The technical pre-requisites for AdvSearch are:
 - Revo 2.1 and upper
-- Zend library 1.11 (Read installation chapter first)
+- Zend library 1.12 (Read installation chapter first)
 - UTF-8 charset
 - php multi-bytes setting ON
 

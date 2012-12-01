@@ -2,7 +2,7 @@
 /**
  * Resource objects for the AdvSearch package
  * @author Coroico <coroico@wangba.fr>
- * 14/08/2011
+ * 28/11/2012
  *
  * @package advsearch
  * @subpackage build
