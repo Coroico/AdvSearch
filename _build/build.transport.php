@@ -2,7 +2,7 @@
 /**
  * AdvSearch Build Script
  *
- * Copyright 2011 Coroico <coroico@wangba.fr>
+ * Copyright 2012 Coroico <coroico@wangba.fr>
  *
  * AdvSearch is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -39,17 +39,17 @@
  * yoursite -> domain name of your site
  * coroico@wangba.fr -> your email address
  * Description -> Description of file or component
- * 1.0.0 RC2 -> 1.0.0 RC2
+ * 1.0.1 pl -> 1.0.0 pl
  *
- * 14/08/2011 -> Current date
- * 2011 -> Current Year
+ * 28/11/2012 -> Current date
+ * 2012 -> Current Year
  */
 
 /* Set package info be sure to set all of these */
 define('PKG_NAME','AdvSearch');
 define('PKG_NAME_LOWER','advsearch');
-define('PKG_VERSION','1.0.0');
-define('PKG_RELEASE','pl2');
+define('PKG_VERSION','1.0.1');
+define('PKG_RELEASE','pl');
 define('PKG_CATEGORY','AdvSearch');
 
 /* Set package options - you can turn these on one-by-one

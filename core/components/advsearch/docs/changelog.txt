@@ -1,5 +1,26 @@
 Changelog for AdvSearch
 
+AdvSearch 1.0.1 pl
+-------------------
+- Improvements
+
+[#32] Add an alias for self-join
+[#31] Placeholder liveSearch is missing
+[#30] Add a tablePrefix inside Main and Joined declarations
+[#25] German lexicon added
+[#20] php5 code styling (identation, added public to methods, and _ (underscore) to the private's names)
+
+- Bug fixing
+
+[#29] issue with IN , NOT IN operators
+[#26] Empty search string Error
+[#22] Wrong paging links with ajax mode & faceted search
+[#19] addCss param not working for results page rendering
+[#14] With the liveSearch mode, the search button is displayed
+[#13] Pipe delimitation links issue
+[#12] Typo for .advsea-highlight css class
+
+
 AdvSearch 1.0.0 pl2
 -------------------
 - "Previous", "Next", "Server Elapsed time" lexicon strings added for an easy localisation

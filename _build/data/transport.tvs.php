@@ -2,7 +2,7 @@
 /**
 * Template variable objects for the AdvSearchs package
 * @author Coroico <coroico@wangba.fr>
-* 14/08/2011
+* 28/11/2012
 *
 * @package advsearchs
 * @subpackage build
