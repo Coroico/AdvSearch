@@ -128,6 +128,10 @@ abstract class AdvSearchUtil {
         // &toPlaceholder [ string | '' ]
         $this->config['toPlaceholder'] = $this->modx->getOption('toPlaceholder', $this->config, '');
 
+        // &addCss - [ 0 | 1 ]
+        $addCss = (int) $this->modx->getOption('addCss', $this->config, 1);
+        $this->config['addCss'] = ($addCss == 0 || $addCss == 1) ? $addCss : 1;
+
         // &withAjax [ 1 | 0 ]
         $withAjax = (int) $this->modx->getOption('withAjax', $this->config, 0);
         $this->config['withAjax'] = (($withAjax == 0 || $withAjax == 1)) ? $withAjax : 0;
