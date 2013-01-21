@@ -168,7 +168,7 @@ class AdvSearchForm extends AdvSearchUtil {
             foreach ($jsHeaderArray as $key => $value)
                 $jsonPair[] = '"' . $key . '":"' . $value . '"';
             $json = '{' . implode(',', $jsonPair) . '}';
-            $jsline = "advsea[advsea.length]='{$json}';";
+            $jsline = "var advsea=advsea || [];advsea[advsea.length]='{$json}';";
             $jsHeader = <<<EOD
 <!-- start AdvSearch header -->
 <script type="text/javascript">
@@ -180,7 +180,7 @@ class AdvSearchForm extends AdvSearchUtil {
 EOD;
             if ($this->config['addJs'] == 1)
                 $this->modx->regClientStartupScript($jsHeader);
-            else
+            else if ($this->config['addJs'] == 2)
                 $this->modx->regClientScript($jsHeader);
         }
 
