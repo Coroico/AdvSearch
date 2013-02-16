@@ -176,33 +176,47 @@ class AdvSearchHooks {
 
     public function processValue($class, $classField, $oper, $ptrn, $val) {
         $condition = '';
-        $val = addslashes($val);
         if ($this->queryHook['version'] == '1.2') {
             switch ($oper) {
                 case 'IN':
                 case 'NOT IN':  // operator with a list of values wrapped by parenthesis
+					$lstval = explode(',',$val);
+					$arrayVal = array();
+					foreach($lstval as $v) {
+						if (is_numeric($val)) $arrayVal[] = $v;
+						else {
+							$v = addslashes($v);
+							$arrayVal[] = "'".$v."'";
+						}
+					}
+					$val = implode(',',$arrayVal);
                     $condition = "({$classField} {$oper}({$val}))";
                     break;
                 case 'FIND':
+					$val = addslashes($val);
                     if (empty($ptrn))
                         $condition = "(FIND_IN_SET( {$val}, {$classField} ))"; // csv list by default
                     else
                         $condition = "(FIND_IN_SET( '{$val}', REPLACE( {$classField}, '{$ptrn}', ',' ) ))";
                     break;
                 case 'MATCH':  // operator with exact matching between word1||word2||word3
+					$val = addslashes($val);
                     $condition = "({$classField} REGEXP '(^|\\\|)+{$val}(\\\||$)+' )";
                     break;
                 case 'REGEXP': // operator with exact pattern matching. eg: ptrn= '%s[0-9]*'
                     // MATCH is equivalent to ptrn =  '(^|\\\|)+%s(\\\||$)+'
+					$val = addslashes($val);
                     $ptrn = sprintf($ptrn, $val);
                     $condition = "({$classField} REGEXP '{$ptrn}' )";
                     break;
                 default:    // >,<,>=,<=,LIKE  (unary operator)
+					$val = addslashes($val);
                     $val = (!is_numeric($val)) ? "'{$val}'" : $val;
                     $condition = "({$classField} {$oper} {$val})";
             }
         }
         else { // QueryHook version 1.1
+			$val = addslashes($val);
             if ($oper == 'FIND')
                 $oper = 'REGEXP';
             if ($oper == 'MATCH')
