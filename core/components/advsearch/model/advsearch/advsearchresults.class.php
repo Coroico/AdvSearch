@@ -114,6 +114,20 @@ class AdvSearchResults extends AdvSearchUtil {
             if (!empty($lstIds))
                 $c->andCondition(array("modResource.id IN (" . $lstIds . ")"));
 
+            // multiple parent support
+            if (!empty($this->config['parents'])) {
+                $parentArray = explode(',', $this->config['parents']);
+                $parents = array();
+                foreach ($parentArray as $parent) {
+                    $parents[] = $parent;
+                }
+                $parent = implode(',', $parents);
+                unset($parents);
+                $c->andCondition(array(
+                    "(`modResource`.`parent` IN ({$parent}))"
+                ));
+            }
+
             // multiple context support
             if (!empty($this->config['contexts'])) {
                 $contextArray = explode(',', $this->config['contexts']);
@@ -961,13 +975,13 @@ class AdvSearchResults extends AdvSearchUtil {
                     }
 
 					$joinedAlias = isset($joined['alias']) ? $joined['alias'] : $joinedClass;
-					foreach($joinedWhereFields as & $joinedWhereField) 
+					foreach($joinedWhereFields as & $joinedWhereField)
 						$joinedWhereField = $this->modx->escape($joinedAlias) . '.' . $this->modx->escape($joinedWhereField);
                     $this->joinedWhereFields = array_merge($this->joinedWhereFields, $joinedWhereFields);
                     // add joined fields
 					$c->select($this->modx->getSelectColumns($joinedClass,$joinedAlias,"{$joinedAlias}_",$joinedFields));
-					foreach($joinedFields as & $joinedField) 
-						$joinedField = "{$joinedAlias}_{$joinedField}"; // all the fields of joined class are prefixed by classname_  
+					foreach($joinedFields as & $joinedField)
+						$joinedField = "{$joinedAlias}_{$joinedField}"; // all the fields of joined class are prefixed by classname_
                     $this->joinedFields = array_merge($this->joinedFields, $joinedFields);
                     // add left join
                     list($leftCriteria, $rightCriteria) = array_map('trim', explode('=', $joined['joinCriteria']));
