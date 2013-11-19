@@ -332,6 +332,31 @@ class AdvSearch extends AdvSearchUtil {
         }
     }
 
+    /**
+     * If the chunk is called by AJAX processor, it needs to be parsed for the
+     * other elements to work, like snippet and output filters.
+     *
+     * Example:
+     * <pre><code>
+     * <?php
+     * $content = $myObject->parseTpl('tplName', $placeholders);
+     * $content = $myObject->processElementTags($content);
+     * </code></pre>
+     *
+     * @param   string  $content    the chunk output
+     * @param   array   $options    option for iteration
+     * @return  string  parsed content
+     */
+    public function processElementTags($content, array $options = array()) {
+        $maxIterations = intval($this->modx->getOption('parser_max_iterations', $options, 10));
+        if (!$this->modx->parser) {
+            $this->modx->getParser();
+        }
+        $this->modx->parser->processElementTags('', $content, true, false, '[[', ']]', array(), $maxIterations);
+        $this->modx->parser->processElementTags('', $content, true, true, '[[', ']]', array(), $maxIterations);
+        return $content;
+    }
+
     /*
      * Returns search results output
      *
@@ -369,27 +394,13 @@ class AdvSearch extends AdvSearchUtil {
         $resultsOutput = '';
         $idx = $this->offset + 1;
 
-        // get the max iterations tags are processed before processing is terminated
-        $maxIterations = (integer) $this->modx->getOption('parser_max_iterations', null, 10);
-
         foreach ($results as $result) {
 
             if ($this->nbExtracts && count($this->extractFields)) {
                 $text = '';
-                foreach ($this->extractFields as $extractField)
-                    $text .= "{$result[$extractField]} ";
-
-                /* process the text used for extract
-                  if (($this->config['engine'] == 'zend') || ($this->config['engine'] == 'all')) {
-                  // parse text used for extract
-                  // first substitute document [[*id]] by result['id']
-                  $text = preg_replace('#\[\[\*id\]\]#',$result['id'],$text);
-                  // parse all cacheable tags first
-                  $this->modx->getParser()->processElementTags('', $text, false, false, '[[', ']]', array(), $maxIterations);
-                  // parse all non-cacheable and remove unprocessed tags
-                  $this->modx->getParser()->processElementTags('', $text, true, true, '[[', ']]', array(), $maxIterations);
-                  }
-                 */
+                foreach ($this->extractFields as $extractField) {
+                    $text .= "{$this->processElementTags($result[$extractField])}";
+                }
 
                 $extracts = $this->_getExtracts(
                         $text, $this->nbExtracts, $this->config['extractLength'], $this->searchTerms, $this->config['extractTpl'], $ellipsis = '...'
