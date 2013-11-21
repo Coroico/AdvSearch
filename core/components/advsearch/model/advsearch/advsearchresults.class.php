@@ -692,7 +692,17 @@ class AdvSearchResults extends AdvSearchUtil {
             $replacement = $this->modx->getOption('core_path', null, MODX_CORE_PATH);
             $this->mainClass = $this->queryHook['main']['class'];  // main class
             $this->queryHook['main']['packagePath'] = str_replace($pattern, $replacement, $this->queryHook['main']['packagePath']);
-			$tablePrefix = isset($this->queryHook['main']['tablePrefix']) ? $this->queryHook['main']['tablePrefix'] : '';
+			$tablePrefix = isset($this->queryHook['main']['tablePrefix']) ? $this->queryHook['main']['tablePrefix'] : null;
+            
+            //if we have a not empty tablePrefix or set the option useTablePrefix
+            $useCustomPrefix = $this->modx->getOption('useCustomPrefix',$this->queryHook['main'],false);
+            $useCustomPrefix = !empty($tablePrefix) ? true : $useCustomPrefix;
+            
+            //allow an empty tablePrefix with the option useCustomPrefix and empty tablePrefix
+            if ($useCustomPrefix){
+                $tablePrefix = isset($this->queryHook['main']['tablePrefix']) ? $this->queryHook['main']['tablePrefix'] : '';
+            }            
+           
             $this->modx->addPackage($this->queryHook['main']['package'], $this->queryHook['main']['packagePath'], $tablePrefix); // add package
             $this->primaryKey = $this->modx->getPK($this->mainClass); // get primary key
         }
