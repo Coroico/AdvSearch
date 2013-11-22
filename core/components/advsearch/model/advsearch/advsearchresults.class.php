@@ -106,6 +106,14 @@ class AdvSearchResults extends AdvSearchUtil {
             elseif ($this->config['hideMenu'] == 1)
                 $c->andCondition(array('hidemenu' => '1'));
 
+            // hideLinks
+            if ($this->config['hideLinks']) {
+                $c->where(array(
+                    'class_key:!=' => 'modSymLink',
+                    'class_key:!=' => 'modWebLink',
+                    ), 'OR');
+            }
+
             // hideContainers
             if ($this->config['hideContainers'])
                 $c->andCondition(array('isfolder' => '0'));

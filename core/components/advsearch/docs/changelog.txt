@@ -1,5 +1,10 @@
 Changelog for AdvSearch
 
+AdvSearch 1.0.2 beta-1
+-------------------
+- [#57] use default modx-table-prefix if not set a custom-prefix
+- [#15] add hideLinks
+
 AdvSearch 1.0.1 pl
 -------------------
 - Improvements
