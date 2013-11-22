@@ -204,6 +204,10 @@ EOD;
         if (!$valid)
             return false;
 
+        // &addCss - [ 0 | 1 ]
+        $addCss = (int) $this->modx->getOption('addCss', $this->config, 1);
+        $this->config['addCss'] = ($addCss == 0 || $addCss == 1) ? $addCss : 1;
+
         // &addJs - [ 0 | 1 | 2 ]
         $addJs = (int) $this->modx->getOption('addJs', $this->config, 1);
         $this->config['addJs'] = ($addJs == 0 || $addJs == 1 || $addJs == 2) ? $addJs : 1;
