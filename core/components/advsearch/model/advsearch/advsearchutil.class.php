@@ -103,7 +103,7 @@ abstract class AdvSearchUtil {
         $this->config['asId'] = $this->modx->getOption('asId', $this->config, 'as0');
 
         // &method [ 'POST' | 'GET' ]
-        $this->config['method'] = strtoupper($this->modx->getOption('method', $this->config, 'GET'));
+        $this->config['method'] = strtolower($this->modx->getOption('method', $this->config, 'get'));
 
         // &init  [ 'none' | 'all' ]
         $init = $this->modx->getOption('init', $this->config, 'none');
