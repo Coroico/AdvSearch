@@ -60,13 +60,15 @@ class AdvSearchHooks {
      * @param array $hooks The csv list of hooks to run.
      * @param array $commonProperties An array of extra properties common to all hooks
      * @param array $hookProperties An array of extra properties for each hook
-     * @return
+     * @return mixed
      */
     public function loadMultiple($hooks, array $commonProperties = array(), array $hookProperties = array()) {
-        if (empty($hooks))
+        if (empty($hooks)) {
             return array();
-        if (is_string($hooks))
-            $hooks = explode(',', $hooks);
+        }
+        if (is_string($hooks)) {
+            $hooks = @explode(',', $hooks);
+        }
 
         $this->hooks = array();
         $ih = 0;
@@ -78,8 +80,9 @@ class AdvSearchHooks {
                 $properties = array_merge($properties, array($propertyName => $propertyArrayVal[$ih]));
             }
             $success = $this->load($hook, $properties);
-            if (!$success)
+            if (!$success) {
                 return $this->hooks; /* dont proceed if hook fails */
+            }
             $ih++;
         }
         return $this->hooks;
@@ -162,12 +165,14 @@ class AdvSearchHooks {
                     if (is_array($val)) {
                         if (!isset($_REQUEST[$key])) {
                             $_REQUEST[$key] = array();
-                            foreach ($val as $v)
-                                $_REQUEST[$key][] = $v;
+                            foreach ($val as $v) {
+                                $_REQUEST[$key][] = strip_tags($v);
+                            }
                         }
                     } else {
-                        if (!isset($_REQUEST[$key]))
-                            $_REQUEST[$key] = $val;
+                        if (!isset($_REQUEST[$key])) {
+                            $_REQUEST[$key] = strip_tags($val);
+                        }
                     }
                 }
             }
@@ -176,51 +181,93 @@ class AdvSearchHooks {
 
     public function processValue($class, $classField, $oper, $ptrn, $val) {
         $condition = '';
-        if ($this->queryHook['version'] == '1.2') {
+        if ($this->queryHook['version'] == '1.3') {
             switch ($oper) {
                 case 'IN':
                 case 'NOT IN':  // operator with a list of values wrapped by parenthesis
-					$lstval = explode(',',$val);
-					$arrayVal = array();
-					foreach($lstval as $v) {
-						if (is_numeric($val)) $arrayVal[] = $v;
-						else {
-							$v = addslashes($v);
-							$arrayVal[] = "'".$v."'";
-						}
-					}
-					$val = implode(',',$arrayVal);
+                    $lstval = explode(',', $val);
+                    $arrayVal = array();
+                    foreach ($lstval as $v) {
+                        if (is_numeric($val)) {
+                            $arrayVal[] = $v;
+                        } else {
+                            $v = addslashes($v);
+                            $arrayVal[] = "'" . $v . "'";
+                        }
+                    }
+                    $val = implode(',', $arrayVal);
                     $condition = "({$classField} {$oper}({$val}))";
                     break;
                 case 'FIND':
-					$val = addslashes($val);
-                    if (empty($ptrn))
+                    $val = addslashes($val);
+                    if (empty($ptrn)) {
                         $condition = "(FIND_IN_SET( {$val}, {$classField} ))"; // csv list by default
-                    else
+                    } else {
                         $condition = "(FIND_IN_SET( '{$val}', REPLACE( {$classField}, '{$ptrn}', ',' ) ))";
+                    }
+                    break;
+                    /* @since 1.3 */
+                case 'MATCH':  // operator with exact matching between word1||word2||word3
+                    $val = addslashes($val);
+                    $condition = "({$classField} REGEXP '{$val}' )";
+                    break;
+                    /* @since 1.3 */
+                case 'REGEXP': // operator with exact pattern matching. eg: ptrn= '%s[0-9]*'
+                    $val = addslashes($val);
+                    $ptrn = str_replace('%s', $val, $ptrn);
+                    $condition = "({$classField} REGEXP '{$ptrn}' )";
+                    break;
+                default:    // >,<,>=,<=,LIKE  (unary operator)
+                    $val = addslashes($val);
+                    $val = (!is_numeric($val)) ? "'{$val}'" : $val;
+                    $condition = "({$classField} {$oper} {$val})";
+            }
+        } elseif ($this->queryHook['version'] == '1.2') {
+            switch ($oper) {
+                case 'IN':
+                case 'NOT IN':  // operator with a list of values wrapped by parenthesis
+                    $lstval = explode(',', $val);
+                    $arrayVal = array();
+                    foreach ($lstval as $v) {
+                        if (is_numeric($val)) {
+                            $arrayVal[] = $v;
+                        } else {
+                            $v = addslashes($v);
+                            $arrayVal[] = "'" . $v . "'";
+                        }
+                    }
+                    $val = implode(',', $arrayVal);
+                    $condition = "({$classField} {$oper}({$val}))";
+                    break;
+                case 'FIND':
+                    $val = addslashes($val);
+                    if (empty($ptrn)) {
+                        $condition = "(FIND_IN_SET( {$val}, {$classField} ))"; // csv list by default
+                    } else {
+                        $condition = "(FIND_IN_SET( '{$val}', REPLACE( {$classField}, '{$ptrn}', ',' ) ))";
+                    }
                     break;
                 case 'MATCH':  // operator with exact matching between word1||word2||word3
-					$val = addslashes($val);
                     $condition = "({$classField} REGEXP '(^|\\\|)+{$val}(\\\||$)+' )";
                     break;
                 case 'REGEXP': // operator with exact pattern matching. eg: ptrn= '%s[0-9]*'
                     // MATCH is equivalent to ptrn =  '(^|\\\|)+%s(\\\||$)+'
-					$val = addslashes($val);
                     $ptrn = sprintf($ptrn, $val);
                     $condition = "({$classField} REGEXP '{$ptrn}' )";
                     break;
                 default:    // >,<,>=,<=,LIKE  (unary operator)
-					$val = addslashes($val);
+                    $val = addslashes($val);
                     $val = (!is_numeric($val)) ? "'{$val}'" : $val;
                     $condition = "({$classField} {$oper} {$val})";
             }
-        }
-        else { // QueryHook version 1.1
-			$val = addslashes($val);
-            if ($oper == 'FIND')
+        } else { // QueryHook version 1.1
+            $val = addslashes($val);
+            if ($oper == 'FIND') {
                 $oper = 'REGEXP';
-            if ($oper == 'MATCH')
+            }
+            if ($oper == 'MATCH') {
                 $oper = 'REGEXP';
+            }
             switch ($oper) {
                 case 'IN':
                 case 'NOT IN':  // unary operator with a list of values wrapped by parenthesis
@@ -244,13 +291,14 @@ class AdvSearchHooks {
         foreach ($andConditions as $keyCondition => $valueCondition) {
 
             $keyElts = array_map("trim", explode(':', $keyCondition));
-            if (count($keyElts) == 1)
+            if (count($keyElts) == 1) {
                 $keyElts[1] = '=';
-            elseif (count($keyElts) == 2) {
-                if ($keyElts[1] == 'REGEXP')
+            } elseif (count($keyElts) == 2) {
+                if ($keyElts[1] == 'REGEXP') {
                     $keyElts[2] = '%s';
-                else
+                } else {
                     $keyElts[2] = '';
+                }
             }
 
             $keyCondition = implode(':', $keyElts);
@@ -263,15 +311,15 @@ class AdvSearchHooks {
             $field = (count($classFieldElts) == 2) ? $classFieldElts[1] : $classFieldElts[0];
             $field = trim($field, '`');
 
-            if (empty($class))
+            if (empty($class)) {
                 $classField = $this->modx->escape($field);
-            elseif ($class == 'tv') {
+            } elseif ($class == 'tv') {
                 $classField = "`tvcv`.{$this->modx->escape('value')}";
                 $cvTbl = $this->modx->getTableName('modTemplateVarResource'); // site_tmplvar_contentvalues
                 $tvTbl = $this->modx->getTableName('modTemplateVar'); // site_tmplvars
-            }
-            else
+            } else {
                 $classField = "{$this->modx->escape($class)}.{$this->modx->escape($field)}";
+            }
 
             $valueElts = array_map("trim", explode(':', $valueCondition));
             $tag = $valueElts[0];
@@ -293,33 +341,34 @@ class AdvSearchHooks {
                         }
                         if (count($orConditions)) {
                             $orCondition = '(' . implode(' OR ', $orConditions) . ')';
-                            if ($class != 'tv')
+                            if ($class != 'tv') {
                                 $conditions[] = $orCondition;
-                            else
+                            } else {
                                 $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $orCondition);
+                            }
                         }
-                    }
-                    else {
+                    } else {
                         // single value
                         $val = strip_tags($_REQUEST[$tag]);
                         if (($val != '') && !in_array($val, $filtered)) {
                             $requests[$tag] = $val;
                             $orCondition = $this->processValue($class, $classField, $oper, $ptrn, $val);
-                            if ($class != 'tv')
+                            if ($class != 'tv') {
                                 $conditions[] = $orCondition;
-                            else
+                            } else {
                                 $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $orCondition);
+                            }
                         }
                     }
                 }
-            }
-            else {
+            } else {
                 // field:oper => CONST  (where CONST is a numeric or a string)
                 $orCondition = $this->processValue($class, $classField, $oper, $ptrn, $tag);
-                if ($class != 'tv')
+                if ($class != 'tv') {
                     $conditions[] = $orCondition;
-                else
+                } else {
                     $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $orCondition);
+                }
             }
         }
         return $conditions;
@@ -332,13 +381,47 @@ class AdvSearchHooks {
         if (!empty($qhDeclaration)) {
 
             // queryHook version
-            $this->queryHook['version'] = '1.1';
-            if (!empty($qhDeclaration['qhVersion']))
+            if (!empty($qhDeclaration['qhVersion'])) {
                 $this->queryHook['version'] = $qhDeclaration['qhVersion'];
+            } else {
+                $this->queryHook['version'] = '1.1';
+            }
 
             // requests
-            if (!empty($qhDeclaration['requests']))
+            if (!empty($qhDeclaration['requests'])) {
                 $requests = $qhDeclaration['requests'];
+            }
+
+            // perPage
+            if (!empty($qhDeclaration['perPage'])) {
+                $tag = $qhDeclaration['perPage'];
+                $val = strip_tags($_REQUEST[$tag]);
+                if (!empty($val)) {
+                    $this->queryHook['perPage'] = $val;
+                    $requests[$tag] = $val;
+                }
+            }
+
+            // main
+            if (!empty($qhDeclaration['main'])) {
+                $this->queryHook['main'] = $qhDeclaration['main'];
+            }
+
+            // joined
+            if (!empty($qhDeclaration['joined'])) {
+                $this->queryHook['joined'] = $qhDeclaration['joined'];
+            }
+
+            // andConditions
+            if (!empty($qhDeclaration['andConditions'])) {
+                if ($this->search->config['withAjax']) {
+                    $this->getVarRequest();
+                }
+                $andConditions = $this->processConditions($qhDeclaration['andConditions'], $requests);
+                if (!empty($andConditions)) {
+                    $this->queryHook['andConditions'] = $andConditions;
+                }
+            }
 
             // sortby
             if (!empty($qhDeclaration['sortby'])) {
@@ -348,8 +431,9 @@ class AdvSearchHooks {
                     $values = $_REQUEST[$tag];
                     $vals = array();
                     foreach ($values as $val) {
-                        if (!empty($val))
+                        if (!empty($val)) {
                             $vals[] = strip_tags($val);
+                        }
                     }
                     if (count($vals)) {
                         $val = implode(',', $vals);
@@ -365,39 +449,14 @@ class AdvSearchHooks {
                 }
             }
 
-            // perPage
-            if (!empty($qhDeclaration['perPage'])) {
-                $tag = $qhDeclaration['perPage'];
-                $val = strip_tags($_REQUEST[$tag]);
-                if (!empty($val)) {
-                    $this->queryHook['perPage'] = $val;
-                    $requests[$tag] = $val;
-                }
-            }
-
-            // main
-            if (!empty($qhDeclaration['main']))
-                $this->queryHook['main'] = $qhDeclaration['main'];
-
-            // joined
-            if (!empty($qhDeclaration['joined']))
-                $this->queryHook['joined'] = $qhDeclaration['joined'];
-
-            // andConditions
-            if (!empty($qhDeclaration['andConditions'])) {
-                if ($this->search->config['withAjax'])
-                    $this->getVarRequest();
-                $andConditions = $this->processConditions($qhDeclaration['andConditions'], $requests);
-                if (!empty($andConditions))
-                    $this->queryHook['andConditions'] = $andConditions;
-            }
-
             // stmt
-            if (!empty($qhDeclaration['stmt']))
+            if (!empty($qhDeclaration['stmt'])) {
                 $this->queryHook['stmt'] = $qhDeclaration['stmt'];
+            }
 
-            if (!empty($requests))
+            if (!empty($requests)) {
                 $this->queryHook['requests'] = $requests;
+            }
         }
         return $this->queryHook;
     }

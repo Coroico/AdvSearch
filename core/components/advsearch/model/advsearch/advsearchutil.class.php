@@ -12,7 +12,7 @@
  */
 // AdvSearch version
 define('PKG_VERSION', '1.0.1');
-define('PKG_RELEASE', 'pl');
+define('PKG_RELEASE', 'dev');
 
 abstract class AdvSearchUtil {
 
@@ -24,6 +24,17 @@ abstract class AdvSearchUtil {
     protected $chunks = array();
     protected $tstart;
     protected $dbg = false;
+    /**
+     * To hold error message
+     * @var string
+     */
+    private $_error = '';
+
+    /**
+     * To hold placeholder array, flatten array with prefix
+     * @var array
+     */
+    private $_placeholders = array();
 
     public function __construct(modX & $modx, array & $config = array()) {
 
@@ -32,8 +43,97 @@ abstract class AdvSearchUtil {
         $this->tstart = $mtime[1] + $mtime[0];
 
         $this->modx = & $modx;
-        $this->config = & $config;
 
+        // &debug = [ 0 | 1 ]
+        $config['debug'] = $modx->getOption('debug', $config, 0);
+        if ($config['debug']) {
+            // error_reporting(E_ALL & ~E_NOTICE); // sets error_reporting to everything except NOTICE remarks
+            error_reporting(E_ALL);
+            ini_set('display_errors', true);
+            if ($config['withAjax']) {
+                $this->_placeholders['debug'] = array();
+                $this->modx->setLogTarget('FILE');
+            } else {
+                $this->modx->setLogTarget('HTML');
+            }
+            $this->modx->setLogLevel(modX::LOG_LEVEL_DEBUG);
+        }
+
+        $revoVersion = $this->modx->getVersionData();
+        $systemInfo = array(
+            "MODx version" => $revoVersion['full_version'],
+            "Php version" => phpversion(),
+            "MySql version" => $this->getMysqlVersion(),
+            "AdvSearch version" => PKG_VERSION . ' ' . PKG_RELEASE,
+        );
+        if ($config['debug']) {
+            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] System environment: ' . print_r($systemInfo, true), '', __METHOD__);
+            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Config parameters before checking: ' . print_r($config, true), '', __METHOD__);
+        }
+
+        // charset [ charset | 'UTF-8' ]
+        $config['charset'] = $this->modx->config['modx_charset'];
+        if (strtolower(trim($config['charset'])) !== 'utf-8') {
+            $msg = '[AdvSearch] AdvSearch runs only with charset UTF-8. The current charset is ' . $config['charset'];
+            $this->modx->log(modX::LOG_LEVEL_ERROR, $msg);
+            throw new Exception($msg);
+        }
+
+        // check that multibyte string option is on
+        $usemb = $this->modx->config['use_multibyte'];
+        if (!$usemb) {
+            $msg = '[AdvSearch] AdvSearch runs only with the multibyte extension on. See Lexicon and language system settings.';
+            $this->modx->log(modX::LOG_LEVEL_ERROR, $msg);
+            throw new Exception($msg);
+        }
+
+        // &asId - [Unique id for advSearch instance | 'as0' ]
+        $config['asId'] = $this->modx->getOption('asId', $config, 'as0');
+
+        // &method [ 'post' | 'get' ]
+        $config['method'] = strtolower($this->modx->getOption('method', $config, 'get'));
+
+        // &init  [ 'none' | 'all' ]
+        $init = $this->modx->getOption('init', $config, 'none');
+        $config['init'] = (($init == 'all') || ($init == 'none')) ? $init : 'none';
+
+        // &libraryPath under assets [ path | 'libraries/' ]
+        $path = $this->modx->getOption('libraryPath', $config, 'libraries/');
+        $path = $this->modx->getOption('assets_path') . $path;
+        $config['libraryPath'] = is_dir($path) ? $path : $this->modx->getOption('assets_path') . 'libraries/';
+        // First make sure the Zend library is in the include path:
+        ini_set('include_path', ini_get('include_path') . PATH_SEPARATOR . $config['libraryPath']);
+
+        // &offsetIndex [ string | 'offset' ] : The name of the REQUEST parameter to use for the pagination offset
+        $config['offsetIndex'] = $this->modx->getOption('offsetIndex', $config, 'offset');
+
+        // &searchIndex [ string | 'search' ]
+        $config['searchIndex'] = $this->modx->getOption('searchIndex', $config, 'search');
+
+        // searchString [ string | '' ]
+        $config['searchString'] = $this->modx->getOption('searchString', $config, '');
+
+        // &toPlaceholder [ string | '' ]
+        $config['toPlaceholder'] = $this->modx->getOption('toPlaceholder', $config, '');
+
+        // &addCss - [ 0 | 1 ]
+        $config['addCss'] = (bool)(int) $this->modx->getOption('addCss', $config, 1);
+
+        // &addJs - [ 0 | 1 | 2 ]
+        $addJs = (int) $this->modx->getOption('addJs', $config, 1);
+        $config['addJs'] = ($addJs == 0 || $addJs == 1 || $addJs == 2) ? $addJs : 1;
+
+        // &withAjax [ 1 | 0 ]
+        $withAjax = (int) $this->modx->getOption('withAjax', $config, 0);
+        $config['withAjax'] = (($withAjax == 0 || $withAjax == 1)) ? $withAjax : 0;
+
+        // &urlScheme
+        $config['urlScheme'] = $this->modx->getOption('urlScheme', $config, -1);
+
+        // &hideLinks
+        $config['hideLinks'] = $this->modx->getOption('hideLinks', $config);
+
+        //===============================================================================================================================
         // path and url
         $corePath = $this->modx->getOption('advSearch.core_path', null, $this->modx->getOption('core_path') . 'components/advsearch/');
         $assetsUrl = $this->modx->getOption('advSearch.assets_url', null, 'assets/components/advsearch/');
@@ -44,105 +144,279 @@ abstract class AdvSearchUtil {
             'modelPath' => $corePath . 'model/',
                 ), $config);
 
-        // &debug = [ 0 | 1 ]
-        if ($this->modx->getOption('debug', $this->config, 0)) {
-            // error_reporting(E_ALL & ~E_NOTICE); // sets error_reporting to everything except NOTICE remarks
-            error_reporting(E_ALL);
-            ini_set('display_errors', true);
-            $this->modx->setLogTarget('HTML');
-            $this->modx->setLogLevel(modX::LOG_LEVEL_DEBUG);
+        $this->config = array_map("trim", $this->config);
+
+        if ($config['debug']) {
+            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Config parameters after checking: ' . print_r($this->config, true), '', __METHOD__);
         }
-        $this->dbg = ($this->config['debug'] > 0);
 
         // load default lexicon
         $this->modx->lexicon->load('advsearch:default');
     }
 
     /**
-     * Check common params between AdvSearch and AdvSearchForm classes
-     *
-     * @access public
-     * @param string $msgerr The error message
-     * @return boolean true if valid otherwise false + msgerr
+     * Set class configuration exclusively for multiple snippet calls
+     * @param   array   $config     snippet's parameters
      */
-    public function checkCommonParams(& $msgerr = '') {
+    public function setConfigs(array $config = array()) {
+        $this->config = array_merge($this->config, $config);
+    }
 
-        $this->config = array_map("trim", $this->config);
+    /**
+     * Define individual config for the class
+     * @param   string  $key    array's key
+     * @param   string  $val    array's value
+     */
+    public function setConfig($key, $val) {
+        $this->config[$key] = $val;
+    }
 
-        $revoVersion = $this->modx->getVersionData();
-        $systemInfo = array(
-            "MODx version" => $revoVersion['full_version'],
-            "Php version" => phpversion(),
-            "MySql version" => $this->getMysqlVersion(),
-            "AdvSearch version" => PKG_VERSION . ' ' . PKG_RELEASE,
-        );
-        if ($this->dbg)
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] System environment: ' . print_r($systemInfo, true), '', 'checkCommonParams');
+    /**
+     * Set string error for boolean returned methods
+     * @return  void
+     */
+    public function setError($msg) {
+        $this->_error = $msg;
+    }
 
-        if ($this->dbg)
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Config parameters before checking: ' . print_r($this->config, true), '', 'checkCommonParams');
+    /**
+     * Get string error for boolean returned methods
+     * @return  string  output
+     */
+    public function getError() {
+        return $this->_error;
+    }
 
-        // charset [ charset | 'UTF-8' ]
-        $charset = $this->modx->config['modx_charset'];
-        if ($charset != 'UTF-8') {
-            $msgerr = '[AdvSearch] AdvSearch runs only with charset UTF-8. The current charset is ' . $charset;
-            $this->modx->log(modX::LOG_LEVEL_ERROR, $msgerr);
-            return false;
+    /**
+     * Set internal placeholder
+     * @param   string  $key    key
+     * @param   string  $value  value
+     * @param   string  $prefix add prefix if it's required
+     */
+    public function setPlaceholder($key, $value, $prefix = '') {
+        $prefix = !empty($prefix) ? $prefix : (isset($this->config['phsPrefix']) ? $this->config['phsPrefix'] : '');
+        $this->_placeholders[$prefix . $key] = $this->trimString($value);
+    }
+
+    /**
+     * Set internal placeholders
+     * @param   array   $placeholders   placeholders in an associative array
+     * @param   string  $prefix         add prefix if it's required
+     * @return  mixed   boolean|array of placeholders
+     */
+    public function setPlaceholders($placeholders, $prefix = '') {
+        if (empty($placeholders)) {
+            return FALSE;
         }
-        $this->config['charset'] = $charset;
+        $prefix = !empty($prefix) ? $prefix : (isset($this->config['phsPrefix']) ? $this->config['phsPrefix'] : '');
+        $placeholders = $this->trimArray($placeholders);
+        $placeholders = $this->implodePhs($placeholders, rtrim($prefix, '.'));
+        // enclosed private scope
+        $this->_placeholders = array_merge($this->_placeholders, $placeholders);
+        // return only for this scope
+        return $placeholders;
+    }
 
-        // check that multibyte string option is on
-        $usemb = $this->modx->config['use_multibyte'];
-        if (!$usemb) {
-            $msgerr = '[AdvSearch] AdvSearch runs only with the multibyte extension on. See Lexicon and language system settings.';
-            $this->modx->log(modX::LOG_LEVEL_ERROR, $msgerr);
-            return false;
+    /**
+     * Get internal placeholders in an associative array
+     * @return array
+     */
+    public function getPlaceholders() {
+        return $this->_placeholders;
+    }
+
+    /**
+     * Get an internal placeholder
+     * @param   string  $key    key
+     * @return  string  value
+     */
+    public function getPlaceholder($key) {
+        return $this->_placeholders[$key];
+    }
+
+    /**
+     * Merge multi dimensional associative arrays with separator
+     * @param   array   $array      raw associative array
+     * @param   string  $keyName    parent key of this array
+     * @param   string  $separator  separator between the merged keys
+     * @param   array   $holder     to hold temporary array results
+     * @return  array   one level array
+     */
+    public function implodePhs(array $array, $keyName = null, $separator = '.', array $holder = array()) {
+        $phs = !empty($holder) ? $holder : array();
+        foreach ($array as $k => $v) {
+            $key = !empty($keyName) ? $keyName . $separator . $k : $k;
+            if (is_array($v)) {
+                $phs = $this->implodePhs($v, $key, $separator, $phs);
+            } else {
+                $phs[$key] = $v;
+            }
+        }
+        return $phs;
+    }
+
+    /**
+     * Trim string value
+     * @param   string  $string     source text
+     * @param   string  $charlist   defined characters to be trimmed
+     * @link http://php.net/manual/en/function.trim.php
+     * @return  string  trimmed text
+     */
+    public function trimString($string, $charlist = null) {
+        if (empty($string) && !is_numeric($string)) {
+            return '';
+        }
+        $string = htmlentities($string);
+        // blame TinyMCE!
+        $string = preg_replace('/(&Acirc;|&nbsp;)+/i', '', $string);
+        $string = trim($string, $charlist);
+        $string = trim(preg_replace('/\s+^(\r|\n|\r\n)/', ' ', $string));
+        $string = html_entity_decode($string);
+        return $string;
+    }
+
+    /**
+     * Trim array values
+     * @param   array   $array          array contents
+     * @param   string  $charlist       [default: null] defined characters to be trimmed
+     * @link http://php.net/manual/en/function.trim.php
+     * @return  array   trimmed array
+     */
+    public function trimArray($input, $charlist = null) {
+        if (is_array($input)) {
+            $output = array_map(array($this, 'trimArray'), $input);
+        } else {
+            $output = $this->trimString($input, $charlist);
         }
 
-        // &asId - [Unique id for advSearch instance | 'as0' ]
-        $this->config['asId'] = $this->modx->getOption('asId', $this->config, 'as0');
+        return $output;
+    }
 
-        // &method [ 'POST' | 'GET' ]
-        $this->config['method'] = strtolower($this->modx->getOption('method', $this->config, 'get'));
+    /**
+     * Parsing template
+     * @param   string  $tpl    @BINDINGs options
+     * @param   array   $phs    placeholders
+     * @return  string  parsed output
+     * @link    http://forums.modx.com/thread/74071/help-with-getchunk-and-modx-speed-please?page=2#dis-post-413789
+     */
+    public function parseTpl($tpl, array $phs = array()) {
+        $output = '';
+        if (preg_match('/^(@CODE|@INLINE)/i', $tpl)) {
+            $tplString = preg_replace('/^(@CODE|@INLINE)/i', '', $tpl);
+            // tricks @CODE: / @INLINE:
+            $tplString = ltrim($tplString, ':');
+            $tplString = trim($tplString);
+            $output = $this->parseTplCode($tplString, $phs);
+        } elseif (preg_match('/^@FILE/i', $tpl)) {
+            $tplFile = preg_replace('/^@FILE/i', '', $tpl);
+            // tricks @FILE:
+            $tplFile = ltrim($tplFile, ':');
+            $tplFile = trim($tplFile);
+            $tplFile = $this->replacePropPhs($tplFile);
+            try {
+                $output = $this->parseTplFile($tplFile, $phs);
+            } catch (Exception $e) {
+                return $e->getMessage();
+            }
+        }
+        // ignore @CHUNK / @CHUNK: / empty @BINDING
+        else {
+            $tplChunk = preg_replace('/^@CHUNK/i', '', $tpl);
+            // tricks @CHUNK:
+            $tplChunk = ltrim($tpl, ':');
+            $tplChunk = trim($tpl);
 
-        // &init  [ 'none' | 'all' ]
-        $init = $this->modx->getOption('init', $this->config, 'none');
-        $this->config['init'] = (($init == 'all') || ($init == 'none')) ? $init : 'none';
+            $chunk = $this->modx->getObject('modChunk', array('name' => $tplChunk), true);
+            if (empty($chunk)) {
+                // try to use @splittingred's fallback
+                $f = $this->config['chunksPath'] . strtolower($tplChunk) . '.chunk.tpl';
+                try {
+                    $output = $this->parseTplFile($f, $phs);
+                } catch (Exception $e) {
+                    $output = $e->getMessage();
+                    return 'Chunk: ' . $tplChunk . ' is not found, neither the file ' . $output;
+                }
+            } else {
+//                $output = $this->modx->getChunk($tplChunk, $phs);
+                /**
+                 * @link    http://forums.modx.com/thread/74071/help-with-getchunk-and-modx-speed-please?page=4#dis-post-464137
+                 */
+                $chunk = $this->modx->getParser()->getElement('modChunk', $tplChunk);
+                $chunk->setCacheable(false);
+                $chunk->_processed = false;
+                $output = $chunk->process($phs);
+            }
+        }
 
-        // &libraryPath under assets [ path | 'libraries/' ]
-        $path = $this->modx->getOption('libraryPath', $this->config, 'libraries/');
-        $path = $this->modx->getOption('assets_path') . $path;
-        $this->config['libraryPath'] = is_dir($path) ? $path : $this->modx->getOption('assets_path') . 'libraries/';
-        // First make sure the Zend library is in the include path:
-        ini_set('include_path', ini_get('include_path') . PATH_SEPARATOR . $this->config['libraryPath']);
+        return $output;
+    }
 
-        // &offsetIndex [ string | 'offset' ]
-        $this->config['offsetIndex'] = $this->modx->getOption('offsetIndex', $this->config, 'offset');
+    /**
+     * Parsing inline template code
+     * @param   string  $code   HTML with tags
+     * @param   array   $phs    placeholders
+     * @return  string  parsed output
+     */
+    public function parseTplCode($code, array $phs = array()) {
+        $chunk = $this->modx->newObject('modChunk');
+        $chunk->setContent($code);
+        $chunk->setCacheable(false);
+        $phs = $this->replacePropPhs($phs);
+        $chunk->_processed = false;
+        return $chunk->process($phs);
+    }
 
-        // &searchIndex [ string | 'search' ]
-        $this->config['searchIndex'] = $this->modx->getOption('searchIndex', $this->config, 'search');
+    /**
+     * Parsing file based template
+     * @param   string  $file   file path
+     * @param   array   $phs    placeholders
+     * @return  string  parsed output
+     * @throws  Exception if file is not found
+     */
+    public function parseTplFile($file, array $phs = array()) {
+        if (!file_exists($file)) {
+            throw new Exception('File: ' . $file . ' is not found.');
+        }
+        $o = file_get_contents($file);
+        $chunk = $this->modx->newObject('modChunk');
 
-        // searchString [ string | '' ]
-        $this->config['searchString'] = $this->modx->getOption('searchString', $this->config, '');
+        // just to create a name for the modChunk object.
+        $name = strtolower(basename($file));
+        $name = rtrim($name, '.tpl');
+        $name = rtrim($name, '.chunk');
+        $chunk->set('name', $name);
 
-        // &toPlaceholder [ string | '' ]
-        $this->config['toPlaceholder'] = $this->modx->getOption('toPlaceholder', $this->config, '');
+        $chunk->setCacheable(false);
+        $chunk->setContent($o);
+        $chunk->_processed = false;
+        $output = $chunk->process($phs);
 
-        // &addCss - [ 0 | 1 ]
-        $addCss = (int) $this->modx->getOption('addCss', $this->config, 1);
-        $this->config['addCss'] = ($addCss == 0 || $addCss == 1) ? $addCss : 1;
+        return $output;
+    }
 
-        // &withAjax [ 1 | 0 ]
-        $withAjax = (int) $this->modx->getOption('withAjax', $this->config, 0);
-        $this->config['withAjax'] = (($withAjax == 0 || $withAjax == 1)) ? $withAjax : 0;
-
-        // &urlScheme
-        $this->config['urlScheme'] = $this->modx->getOption('urlScheme', $this->config, -1);
-
-        if ($this->dbg)
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Config parameters after checking: ' . print_r($this->config, true), '', 'checkCommonParams');
-
-        return true;
+    /**
+     * If the chunk is called by AJAX processor, it needs to be parsed for the
+     * other elements to work, like snippet and output filters.
+     *
+     * Example:
+     * <pre><code>
+     * <?php
+     * $content = $myObject->parseTpl('tplName', $placeholders);
+     * $content = $myObject->processElementTags($content);
+     * </code></pre>
+     *
+     * @param   string  $content    the chunk output
+     * @param   array   $options    option for iteration
+     * @return  string  parsed content
+     */
+    public function processElementTags($content, array $options = array()) {
+        $maxIterations = intval($this->modx->getOption('parser_max_iterations', $options, 10));
+        if (!$this->modx->parser) {
+            $this->modx->getParser();
+        }
+        $this->modx->parser->processElementTags('', $content, true, false, '[[', ']]', array(), $maxIterations);
+        $this->modx->parser->processElementTags('', $content, true, true, '[[', ']]', array(), $maxIterations);
+        return $content;
     }
 
     /**
@@ -175,60 +449,13 @@ abstract class AdvSearchUtil {
      */
     public function getElapsedTime($start = 0) {
         $tend = $this->modx->getMicroTime();
-        if ($start)
+        if ($start) {
             $eTime = ($tend - $start);
-        else
+        } else {
             $eTime = ($tend - $this->tstart);
+        }
         $etime = sprintf("%.4fs", $eTime);
         return $etime;
-    }
-
-    /**
-     * Gets unprocessed chunk, set cacheable
-     *
-     * @access public
-     * @param string $name The name of the Chunk
-     * @return string The unprocessed chunk
-     */
-    public function getChunk($name) {
-        $chunk = null;
-        if (!isset($this->chunks[$name])) {
-            $chunk = $this->modx->getObject('modChunk', array('name' => $name), true); // from chunk
-            if (empty($chunk)) {
-                $f = $this->config['chunksPath'] . strtolower($name) . '.chunk.tpl';
-                if (file_exists($f)) {
-                    $fhdl = fopen($f, 'r');
-                    $o = fread($fhdl, filesize($f));
-                    $chunk = $this->modx->newObject('modChunk');
-                    $chunk->set('name', $name);
-                    $chunk->setContent($o);
-                }
-                if (empty($chunk))
-                    return false;
-            }
-            $chunk->setCacheable(false);
-            // record chunk object
-            $this->chunks[$name] = $chunk;
-        }
-        return $chunk;
-    }
-
-    /**
-     * Process chunk with properties.
-     *
-     * @access public
-     * @param string $name The name of the Chunk
-     * @param array $properties The properties for the Chunk
-     * @return string The processed content of the Chunk
-     */
-    public function processChunk($name, $properties = array()) {
-        $chunk = $this->chunks[$name];
-        if (!empty($chunk)) {
-            $chunk->_processed = false;
-            return $chunk->process($properties);
-        }
-        else
-            return '';
     }
 
     /**
@@ -268,14 +495,36 @@ abstract class AdvSearchUtil {
      * @return string The select statement
      */
     public function niceQuery(xPDOQuery $query = null) {
-        $searched = array("SELECT", "GROUP_CONCAT", "LEFT JOIN", "INNER JOIN", "EXISTS", "LIMIT", "FROM", "WHERE", "GROUP BY", "HAVING", "ORDER BY", "OR", "AND", "IFNULL");
-        $replace = array(" \r\nSELECT", " \r\nGROUP_CONCAT", " \r\nLEFT JOIN", " \r\nINNER JOIN", " \r\nEXISTS", " \r\nLIMIT", " \r\nFROM", " \r\nWHERE", " \r\nGROUP BY", " \r\nHAVING", " ORDER BY", " \r\nOR", " \r\nAND", " \r\nIFNULL");
+        $searched = array("SELECT", "GROUP_CONCAT", "LEFT JOIN", "INNER JOIN", "EXISTS", "LIMIT", "FROM", "WHERE", "GROUP BY", "HAVING", "ORDER BY", "OR", "AND", "IFNULL", "ON");
+        $replace = array(" \r\nSELECT", " \r\nGROUP_CONCAT", " \r\nLEFT JOIN", " \r\nINNER JOIN", " \r\nEXISTS", " \r\nLIMIT", " \r\nFROM", " \r\nWHERE", " \r\nGROUP BY", " \r\nHAVING", " ORDER BY", " \r\nOR", " \r\nAND", " \r\nIFNULL", " \r\nON");
         $output = '';
         if (isset($query)) {
             $query->prepare();
             $output = str_replace($searched, $replace, " " . $query->toSQL());
         }
         return $output;
+    }
+
+    /**
+     * Log a message with details about where and when an event occurs.
+     * @param string $msg The message to log.
+     * @param string $def The name of a defining structure (such as a class) to
+     * help identify the message source.
+     * @param string $file A filename in which the log event occured.
+     * @param string $line A line number to help locate the source of the event
+     * within the indicated file.
+     */
+    public function ifDebug($msg, $def= '', $file= '', $line= '') {
+        if ($this->config['debug']) {
+            if ($this->config['withAjax']) {
+                $target = array(
+                    'target' => 'FILE',
+                );
+            } else {
+                $target = 'HTML';
+            }
+            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] ' . $msg, $target, $def, $file, $line);
+        }
     }
 
 }

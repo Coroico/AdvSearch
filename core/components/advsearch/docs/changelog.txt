@@ -1,7 +1,13 @@
 Changelog for AdvSearch
 
-AdvSearch 1.0.2 beta-1
+AdvSearch dev
 -------------------
+- change set_time_limit to 1000, infinite limit kills.
+- dump the debug output to MODX's error log if it's an ajax call
+- [#63] add queryHook's version to implement different regex
+- reformat the code
+- [#61] fallback on failed loading of the zend lucene library
+- [#60] fix sorting which doesn't work in queryHook
 - [#44] fix validation error on form's method
 - [#57] use default modx-table-prefix if not set a custom-prefix
 - [#15] add hideLinks
@@ -32,7 +38,7 @@ AdvSearch 1.0.0 pl2
 - "Previous", "Next", "Server Elapsed time" lexicon strings added for an easy localisation
 
 - bug fixing
-#11 syntax error, unexpected with French help file
+[#11] syntax error, unexpected with French help file
 
 
 AdvSearch 1.0.0 pl

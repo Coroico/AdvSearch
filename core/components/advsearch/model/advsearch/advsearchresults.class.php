@@ -101,26 +101,29 @@ class AdvSearchResults extends AdvSearchUtil {
             $c->andCondition(array('published' => '1', 'searchable' => '1', 'deleted' => '0'));
 
             // hideMenu
-            if ($this->config['hideMenu'] == 0)
+            if ($this->config['hideMenu'] == 0) {
                 $c->andCondition(array('hidemenu' => '0'));
-            elseif ($this->config['hideMenu'] == 1)
+            } elseif ($this->config['hideMenu'] == 1) {
                 $c->andCondition(array('hidemenu' => '1'));
+            }
 
             // hideLinks
             if ($this->config['hideLinks']) {
                 $c->where(array(
                     'class_key:!=' => 'modSymLink',
                     'class_key:!=' => 'modWebLink',
-                    ), 'OR');
+                        ), 'OR');
             }
 
             // hideContainers
-            if ($this->config['hideContainers'])
+            if ($this->config['hideContainers']) {
                 $c->andCondition(array('isfolder' => '0'));
+            }
 
             // restrict search to $lstIds
-            if (!empty($lstIds))
+            if (!empty($lstIds)) {
                 $c->andCondition(array("modResource.id IN (" . $lstIds . ")"));
+            }
 
             // multiple parent support
             if (!empty($this->config['parents'])) {
@@ -161,9 +164,9 @@ class AdvSearchResults extends AdvSearchUtil {
             }
 
             //============================= add query conditions
-            if (!empty($this->queryHook['andConditions']))
+            if (!empty($this->queryHook['andConditions'])) {
                 $c->andCondition($this->queryHook['andConditions']);
-
+            }
 
             //=============================  add an orderby clause for sorting fields of modResources (TVs are excluded from the list)
             $fields = array_intersect($this->sortbyField, $this->mainFields);
@@ -177,15 +180,12 @@ class AdvSearchResults extends AdvSearchUtil {
 
             if (empty($this->queryHook['stmt'])) {
                 // debug mysql query
-                if ($this->dbg)
-                    $this->modx->log(modX::LOG_LEVEL_DEBUG, 'SearchString: ' . $this->searchString, '', 'doEngineSearch');
-                if ($this->dbg)
-                    $this->modx->log(modX::LOG_LEVEL_DEBUG, 'Select before pagination: ' . $this->niceQuery($c), '', 'doEngineSearch');
+                $this->ifDebug('SearchString: ' . $this->searchString, __METHOD__, __FILE__, __LINE__);
+                $this->ifDebug('Select before pagination: ' . $this->niceQuery($c), __METHOD__, __FILE__, __LINE__);
 
                 // get number of results before pagination
                 $this->resultsCount = $this->modx->getCount('modResource', $c);
-                if ($this->dbg)
-                    $this->modx->log(modX::LOG_LEVEL_DEBUG, 'Number of results before pagination: ' . $this->resultsCount, '', 'doEngineSearch');
+                $this->ifDebug('Number of results before pagination: ' . $this->resultsCount, __METHOD__, __FILE__, __LINE__);
 
                 if ($this->resultsCount > 0) {
                     //============================= add query limits
@@ -193,12 +193,12 @@ class AdvSearchResults extends AdvSearchUtil {
                     // offset,limit relevant only when results are sorted by fields from docFields (tvs and score excluded)
                     // If postHook is required we don't paginate the results
                     $offsetLimitSet = (count(array_intersect($this->sortbyField, $this->mainFields)) == count($this->sortbyField));
-                    if ($offsetLimitSet && empty($this->config['postHook']))
+                    if ($offsetLimitSet && empty($this->config['postHook'])) {
                         $c->limit($limit, $this->offset);
+                    }
 
                     // debug mysql query
-                    if ($this->dbg)
-                        $this->modx->log(modX::LOG_LEVEL_DEBUG, 'Final select: ' . $this->niceQuery($c), '', 'doEngineSearch');
+                    $this->ifDebug('Final select: ' . $this->niceQuery($c), __METHOD__, __FILE__, __LINE__);
 
                     //============================= get results
                     $collection = $this->modx->getCollection('modResource', $c);
@@ -214,26 +214,26 @@ class AdvSearchResults extends AdvSearchUtil {
 
                     //============================= set a subset (offset, perPage)
                     // offset,limit relevant only when results are sorted by fields different from docFields like tv and score.
-                    $offsetLimitSet = (count(array_intersect($this->sortbyField, $this->mainFields)) != count($this->sortbyField));
-                    if ($offsetLimitSet && empty($this->config['postHook']))
+                    $offsetLimitSet = (count(array_intersect($this->sortbyField, $this->mainFields)) !== count($this->sortbyField));
+                    if ($offsetLimitSet && empty($this->config['postHook'])) {
                         $this->results = array_slice($this->results, $this->offset, $this->config['perPage']);
+                    }
 
                     //============================= prepare final results
                     $this->results = $this->_prepareResults($this->results);
                 }
-            }
-            else {
+            } else {
                 // run a new statement
                 //============================= get results, append & render tv fields (includeTVs, withTVs)
                 $this->results = $this->_runStmt($c);
                 // get number of results before pagination
                 $this->resultsCount = count($this->results);
-                if ($this->dbg)
-                    $this->modx->log(modX::LOG_LEVEL_DEBUG, 'Number of results before pagination: ' . $this->resultsCount, '', 'doEngineSearch');
+                $this->ifDebug('Number of results before pagination: ' . $this->resultsCount, __METHOD__, __FILE__, __LINE__);
 
                 //============================= set a subset (offset, perPage)
-                if (empty($this->config['postHook']))
+                if (empty($this->config['postHook'])) {
                     $this->results = array_slice($this->results, $this->offset, $this->config['perPage']);
+                }
 
                 //============================= prepare final results
                 $this->results = $this->_prepareResults($this->results);
@@ -257,6 +257,7 @@ class AdvSearchResults extends AdvSearchUtil {
         // merge results (zend lucene first then mysql), mysql override zend results
         $this->results = array_merge($zendResults, $mysqlResults);
         $this->resultsCount = count($this->results);
+
         return $this->results;
     }
 
@@ -275,7 +276,16 @@ class AdvSearchResults extends AdvSearchUtil {
             $index = Zend_Search_Lucene::open($this->config['docindexPath']);
 
             // increase the execution time of the script
-            ini_set('max_execution_time', 0);
+            if (function_exists('ini_get') && !ini_get('safe_mode')) {
+                if (function_exists('set_time_limit')) {
+                    set_time_limit(1000);
+                }
+                if (function_exists('ini_set')) {
+                    if (ini_get('max_execution_time') !== 1000) {
+                        ini_set('max_execution_time', 1000);
+                    }
+                }
+            }
 
             // set up the zend query
             if ($this->searchString) {
@@ -286,6 +296,7 @@ class AdvSearchResults extends AdvSearchUtil {
                 try {
                     $hits = $index->find($zendQuery);
                 } catch (Zend_Search_Lucene_Exception $ex) {
+                    $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] ' . $ex->getMessage(), '', __METHOD__, __FILE__, __LINE__);
                     $hits = array();
                 }
             }
@@ -295,26 +306,28 @@ class AdvSearchResults extends AdvSearchUtil {
             if (count($hits)) {
                 $hitDocids = array();
                 $fhits = array();
-                foreach ($hits as $hit)
+                foreach ($hits as $hit) {
                     $hitDocids[] = $hit->docid;
+                }
                 if ($this->config['ids']) {
                     $hitDocids = array_values(array_intersect($hitDocids, $this->ids)); // filtering by ids parameter
                     foreach ($hits as $hit) {
-                        if (in_array($hit->id, $hitDocids))
+                        if (in_array($hit->id, $hitDocids)) {
                             $fhits[] = $hit;
+                        }
                     }
                 }
                 $lstIds = implode(',', $hitDocids);
             }
-        }
-        else {
+        } else {
             $lstIds = $this->config['ids'];
             $hits = array();
         }
-        if ($this->dbg)
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, 'lstIds: ' . $lstIds, '', '_initSearch');
+
+        $this->ifDebug('lstIds: ' . $lstIds, __METHOD__, __FILE__, __LINE__);
         // set up a query to get results from database
         $c = $this->modx->newQuery('modResource');
+
         return $c;
     }
 
@@ -336,37 +349,48 @@ class AdvSearchResults extends AdvSearchUtil {
             $nbs = count($subqueries);
             for ($i = 0; $i < $nbs; $i++) {
                 $condition = $this->getZendQuery($subqueries[$i], $signs[$i]);
-                if (is_null($signs[$i]))
+                if (is_null($signs[$i])) {
                     $orCondition[] = $condition;
-                elseif ($signs[$i])
+                } elseif ($signs[$i]) {
                     $andCondition[] = $condition;
-                elseif (!$signs[$i])
+                } elseif (!$signs[$i]) {
                     $notCondition[] = $condition;
+                }
             }
             $conditions = array();
             $zendCondition = '';
+
             $nband = count($andCondition);
-            if ($nband)
+            if ($nband) {
                 $conditions[] = ($nband > 1) ? '(' . implode(' AND ', $andCondition) . ')' : $andCondition[0];
+            }
+
             $nbor = count($orCondition);
-            if ($nbor)
+            if ($nbor) {
                 $conditions[] = ($nbor > 1) ? '(' . implode(' OR ', $orCondition) . ')' : $orCondition[0];
+            }
+
             $nbnot = count($notCondition);
-            if ($nbnot)
+            if ($nbnot) {
                 $conditions[] = ($nbnot > 1) ? 'NOT(' . implode(' AND ', $notCondition) . ')' : 'NOT ' . $notCondition[0];
+            }
 
             $nbc = count($conditions);
-            if ($nbc)
+            if ($nbc) {
                 $zendCondition = ($nbc > 1) ? '(' . implode(' AND ', $conditions) . ')' : $conditions[0];
+            }
+
             return $zendCondition;
-        }
-        elseif ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_phrase) {
+        } elseif ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_phrase) {
             $phrase = $query->__toString();
+
             return $phrase;
         } elseif ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Term) {
             $term = $query->__toString();
-            if ($sign || is_null($sign))
+            if ($sign || is_null($sign)) {
                 $term = '*' . $term . '*'; // NOT excluded
+            }
+
             return $term;
         }
     }
@@ -387,6 +411,7 @@ class AdvSearchResults extends AdvSearchUtil {
                 $c->andCondition($condition);
             }
         }
+
         return $c;
     }
 
@@ -408,67 +433,84 @@ class AdvSearchResults extends AdvSearchUtil {
             $nbs = count($subqueries);
             for ($i = 0; $i < $nbs; $i++) {
                 $condition = $this->_getMysqlQuery($subqueries[$i], $signs[$i]);
-                if (is_null($signs[$i]))
+                if (is_null($signs[$i])) {
                     $orCondition[] = $condition;
-                elseif ($signs[$i])
+                } elseif ($signs[$i]) {
                     $andCondition[] = $condition;
-                elseif (!$signs[$i])
+                } elseif (!$signs[$i]) {
                     $notCondition[] = $condition;
+                }
             }
             $conditions = array();
             $mysqlCondition = '';
+
             $nband = count($andCondition);
-            if ($nband)
+            if ($nband) {
                 $conditions[] = ($nband > 1) ? '((' . implode(') AND (', $andCondition) . '))' : $andCondition[0];
+            }
+
             $nbor = count($orCondition);
-            if ($nbor)
+            if ($nbor) {
                 $conditions[] = ($nbor > 1) ? '((' . implode(') OR (', $orCondition) . '))' : $orCondition[0];
+            }
+
             $nbnot = count($notCondition);
-            if ($nbnot)
+            if ($nbnot) {
                 $conditions[] = ($nbnot > 1) ? '((' . implode(') AND (', $notCondition) . '))' : $notCondition[0];
+            }
 
             $nbc = count($conditions);
-            if ($nbc)
+            if ($nbc) {
                 $mysqlCondition = ($nbc > 1) ? '(' . implode(' AND ', $conditions) . ')' : $conditions[0];
+            }
+
             return $mysqlCondition;
-        }
-        else if ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Phrase) {
+        } else if ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Phrase) {
             $phrase = substr($query->__toString(), 1, -1); // remove beginning and end quotes
             $condition = $this->_setCondition($phrase, $sign);
+
             return $condition;
         } else if ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Term) {
             $term = $query->__toString();
             $condition = $this->_setCondition($term, $sign);
+
             return $condition;
         }
     }
 
     private function _setCondition($term, $sign) {
         $isLikeCondition = (($sign) || is_null($sign));
-        if ($isLikeCondition)
+        if ($isLikeCondition) {
             $like = 'LIKE';
-        else
+        } else {
             $like = 'NOT LIKE';
+        }
         // replace lucene wildcards by MySql wildcards
         $pattern = array('#\*#', '#\?#');
         $replacement = array('%', '_');
         $term = preg_replace($pattern, $replacement, $term);
         $term = "%{$term}%";
         $orand = array();
-        foreach ($this->mainWhereFields as $field)
+        foreach ($this->mainWhereFields as $field) {
             $orand[] = "`{$this->mainClass}`.`{$field}` {$like} '{$term}'";
-        if (!empty($this->tvWhereFields))
-            foreach ($this->tvWhereFields as $field)
+        }
+        if (!empty($this->tvWhereFields)) {
+            foreach ($this->tvWhereFields as $field) {
                 $orand[] = "`{$field}_cv`.`value` {$like} '{$term}'";
-        if (!empty($this->joinedWhereFields))
-            foreach ($this->joinedWhereFields as $field)
+            }
+        }
+        if (!empty($this->joinedWhereFields)) {
+            foreach ($this->joinedWhereFields as $field) {
                 $orand[] = "{$field} {$like} '{$term}'";
+            }
+        }
         $condition = '';
         if (count($orand)) {
-            if ($isLikeCondition)
+            if ($isLikeCondition) {
                 $condition = '((' . implode(') OR (', $orand) . '))';
-            else
+            } else {
                 $condition = '((' . implode(') AND (', $orand) . '))';
+            }
         }
         return $condition;
     }
@@ -487,12 +529,12 @@ class AdvSearchResults extends AdvSearchUtil {
         $patterns = array('{sql}');
         $replacements = array($sql);
         $sql = str_replace($patterns, $replacements, $this->queryHook['stmt']['execute']);
-        if ($this->dbg)
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, 'sql: ' . $sql, '', '_runStmt');
+        $this->ifDebug('sql: ' . $sql, __METHOD__, __FILE__, __LINE__);
         unset($c);
         $c = new xPDOCriteria($this->modx, $sql);
-        if (!empty($this->queryHook['stmt']['prepare']))
+        if (!empty($this->queryHook['stmt']['prepare'])) {
             $c->bind($this->queryHook['stmt']['prepare']);
+        }
         $c->prepare();
         if ($c->stmt) {
             $exec = $c->stmt->execute();
@@ -514,8 +556,8 @@ class AdvSearchResults extends AdvSearchUtil {
             }
         }
         unset($c);
-        if ($this->dbg)
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, 'Results: ' . print_r($results, true), '', '_runStmt');
+        $this->ifDebug('Results of _runStmt: ' . print_r($results, true), __METHOD__, __FILE__, __LINE__);
+
         return $results;
     }
 
@@ -546,6 +588,7 @@ class AdvSearchResults extends AdvSearchUtil {
                 $results[] = $resource->get($displayedFields);
             }
         }
+
         return $results;
     }
 
@@ -570,8 +613,9 @@ class AdvSearchResults extends AdvSearchUtil {
                 // use fieldPotency parameter to calculate the score
                 $fieldPotency = explode(',', $this->config['fieldPotency']);
                 $fldps = array();
-                foreach ($fieldPotency as $key => $value)
+                foreach ($fieldPotency as $key => $value) {
                     list($fldps[$key]['field'], $fldps[$key]['weight']) = explode(':', $value);
+                }
                 for ($i = 0; $i < $nbres; $i++) {
                     $results[$i]['score'] = 0;
                     foreach ($fldps as $fldp) {
@@ -581,6 +625,7 @@ class AdvSearchResults extends AdvSearchUtil {
                 }
             }
         }
+
         return $results;
     }
 
@@ -601,33 +646,39 @@ class AdvSearchResults extends AdvSearchUtil {
             $nbs = count($subqueries);
             for ($i = 0; $i < $nbs; $i++) {
                 $score = $this->_getScoreQuery($field, $weight, $subqueries[$i], $signs[$i]);
-                if (is_null($signs[$i]))
+                if (is_null($signs[$i])) {
                     $orScore[] = $score;
-                elseif ($signs[$i])
+                } elseif ($signs[$i]) {
                     $andScore[] = $score;
+                }
             }
             $scores = array();
             $score = 0;
             $nband = count($andScore);
-            if ($nband)
+            if ($nband) {
                 $scores[] = min($andScore);
+            }
 
             $nbor = count($orScore);
-            if ($nbor)
+            if ($nbor) {
                 $scores[] = array_sum($orScore);
+            }
 
             $nbs = count($scores);
-            if ($nbs)
+            if ($nbs) {
                 $score = min($scores);
+            }
+
             return $score;
-        }
-        else if ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Phrase) {
+        } else if ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Phrase) {
             $phrase = strtolower(substr($query->__toString(), 1, -1)); // remove beginning and end quotes
             $score = $weight * mb_substr_count($field, $phrase);
+
             return $score;
         } else if ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Term) {
             $term = strtolower($query->__toString());
             $score = $weight * mb_substr_count($field, $term);
+
             return $score;
         }
     }
@@ -645,7 +696,9 @@ class AdvSearchResults extends AdvSearchUtil {
         if ($this->config['fieldPotency'] != 'createdon:1') {
             foreach ($results as $key => $row) {
                 $score[$key] = $row['score'];
-				if (count($results) == count($score)) array_multisort($score, SORT_DESC, $results);
+                if (count($results) == count($score)) {
+                    array_multisort($score, SORT_DESC, $results);
+                }
             }
         } else if ($this->config['sortby']) {
             foreach ($this->sortbyField as $field) {
@@ -659,6 +712,7 @@ class AdvSearchResults extends AdvSearchUtil {
                 }
             }
         }
+
         return $results;
     }
 
@@ -682,9 +736,7 @@ class AdvSearchResults extends AdvSearchUtil {
         // set lstIdResults
         $lstIdResults = implode(',', $this->idResults);
 
-        if ($this->dbg) {
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, 'lstIdsResults: ' . $lstIdResults, '', '_prepareResults');
-        }
+        $this->ifDebug('lstIdsResults: ' . $lstIdResults, __METHOD__, __FILE__, __LINE__);
 
         return $searchResults;
     }
@@ -700,14 +752,15 @@ class AdvSearchResults extends AdvSearchUtil {
 
         if (!empty($this->queryHook['main'])) { // a new main package is declared in query hook
             $msg = '';
-            if (empty($this->queryHook['main']['package']))
+            if (empty($this->queryHook['main']['package'])) {
                 $msg = 'Main - Package name should be declared in queryHook';
-            elseif (empty($this->queryHook['main']['packagePath']))
+            } elseif (empty($this->queryHook['main']['packagePath'])) {
                 $msg = 'Main - Package path should be declared in queryHook';
-            elseif (empty($this->queryHook['main']['class']))
+            } elseif (empty($this->queryHook['main']['class'])) {
                 $msg = 'Main - Class name should be defined in queryHook';
+            }
             if (!empty($msg)) {
-                $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] ' . $msg, '', '_checkResultsParams');
+                $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] ' . $msg, '', __METHOD__, __FILE__, __LINE__);
                 return false;
             }
             $pattern = '{core_path}';   // wilcard used inside the pathname definition
@@ -734,12 +787,13 @@ class AdvSearchResults extends AdvSearchUtil {
 
         // &engine [ 'mysql' | 'zend' | 'all' ] - name of search engine to use
         $engine = strtolower(trim($this->modx->getOption('engine', $this->config, 'mysql')));
-        $this->config['engine'] = (($engine == 'all') || ($engine == 'zend') || ($engine == 'mysql')) ? $engine : 'mysql';
+        $this->config['engine'] = in_array($engine, array('all', 'zend', 'mysql')) ? $engine : 'mysql';
 
         // &fields [csv list of fields | 'pagetitle,longtitle,alias,description,introtext,content' (modResource)  '' otherwise ]
-        $lstFields = $this->modx->getOption('fields', $this->config, 'pagetitle,longtitle,alias,description,introtext,content');
-        if (!empty($this->queryHook['main']['fields']))
+        $lstFields = $this->config['fields'];
+        if (!empty($this->queryHook['main']['fields'])) {
             $lstFields = $this->queryHook['main']['fields'];
+        }
         $fields = array();
         if (!empty($lstFields)) {
             $fields = array_map('trim', explode(',', $lstFields));
@@ -747,10 +801,11 @@ class AdvSearchResults extends AdvSearchUtil {
         $this->config['fields'] = implode(',', $fields);
 
         // initialise mainFields : 'id', 'template', 'context_key', 'createdon' + docFields for modResource
-        if ($this->mainClass == 'modResource')
+        if ($this->mainClass == 'modResource') {
             $requiredFields = array('id', 'template', 'context_key', 'createdon');
-        else
+        } else {
             $requiredFields = array($this->primaryKey);
+        }
         $this->mainFields = array_merge($requiredFields, $fields);
 
         // &fieldPotency - [ comma separated list of couple (field : potency) | 'createdon:1' (modResource) ]
@@ -764,20 +819,22 @@ class AdvSearchResults extends AdvSearchUtil {
                 $checkedFieldPotency[] = implode(':', $fld);
             }
             $this->config['fieldPotency'] = implode(',', $checkedFieldPotency);
-        }
-        else
+        } else {
             $this->config['fieldPotency'] = $lstFieldPotency;
+        }
 
-        // &withFields [csv list of fields | 'pagetitle,longtitle,alias,description,introtext,content' (modResource) '' (all fields) otherwise]
-        $lstWithFields = $this->modx->getOption('withFields', $this->config, 'pagetitle,longtitle,alias,description,introtext,content');
-        if (!empty($this->queryHook['main']['withFields']))
+        if (!empty($this->queryHook['main']['withFields'])) {
             $lstWithFields = $this->queryHook['main']['withFields'];
+        } else {
+            // &withFields [csv list of fields | 'pagetitle,longtitle,alias,description,introtext,content' (modResource) '' (all fields) otherwise]
+            $lstWithFields = $this->modx->getOption('withFields', $this->config, 'pagetitle,longtitle,alias,description,introtext,content');
+        }
         if (!empty($lstWithFields)) {
             $this->mainWhereFields = array_map('trim', explode(',', $lstWithFields));
             $this->config['withFields'] = implode(',', $this->mainWhereFields);
-        }
-        else
+        } else {
             $this->config['withFields'] = $lstWithFields;
+        }
 
         if ($this->mainClass == 'modResource') {
             // &hideMenu [ 0 | 1 | 2 ]  Search in hidden documents from menu.
@@ -789,47 +846,55 @@ class AdvSearchResults extends AdvSearchUtil {
             if (!empty($lstIncludeTVs)) {
                 $this->tvFields = array_map('trim', explode(',', $lstIncludeTVs));
                 $this->config['includeTVs'] = implode(',', $this->tvFields);
-            }
-            else
+            } else {
                 $this->config['includeTVs'] = $lstIncludeTVs;
+            }
 
             // &withTVs - [ a comma separated list of TV names | '' ]
             $lstWithTVs = $this->modx->getOption('withTVs', $this->config, '');
             if (!empty($lstWithTVs)) {
                 $this->tvWhereFields = array_map('trim', explode(',', $lstWithTVs));
                 $this->config['withTVs'] = implode(',', $this->tvWhereFields);
-            }
-            else
+            } else {
                 $this->config['withTVs'] = $lstWithTVs;
+            }
 
             // remove doubles between withTVs and includeTVs parameters
             $this->tvFields = array_unique(array_merge($this->tvWhereFields, $this->tvFields));
         }
 
-        // &ids [ comma separated list of Ids | '' ] - ids or primary keys for custom package
-        $lstIds = $this->modx->getOption('ids', $this->config, '');
-        if (!empty($this->queryHook['main']['lstIds']))
+        if (!empty($this->queryHook['main']['lstIds'])) {
             $lstIds = $this->queryHook['main']['lstIds'];
+        } else {
+            // &ids [ comma separated list of Ids | '' ] - ids or primary keys for custom package
+            $lstIds = $this->modx->getOption('ids', $this->config, '');
+        }
+
         if (!empty($lstIds)) {
             $this->ids = array_map('trim', explode(',', $lstIds));
             $this->config['ids'] = implode(',', $this->ids);
-        }
-        else
+        } else {
             $this->config['ids'] = $lstIds;
+        }
 
-        // &perPage [ int | 10 ] - Set to 0 if unlimited
-        $perPage = (int) $this->modx->getOption('perPage', $this->config, 10);
-        if ((!empty($this->queryHook)) && (!empty($this->queryHook['perPage'])))
+        if ((!empty($this->queryHook)) && (!empty($this->queryHook['perPage']))) {
             $perPage = $this->queryHook['perPage'];
+        } else {
+            // &perPage [ int | 10 ] - Set to 0 if unlimited
+            $perPage = (int) $this->modx->getOption('perPage', $this->config, 10);
+        }
         $this->config['perPage'] = (($perPage >= 0)) ? $perPage : 10;
 
-        // &sortby - comma separated list of couple "field [ASC|DESC]" to sort by.
-        // field from joined resource should be named resourceName_fieldName. e.g: quipComment_body
-        $lstSortby = $this->modx->getOption('sortby', $this->config, 'createdon DESC');
-        if (!empty($this->queryHook['main']['sortby']))
+        if (!empty($this->queryHook['sortby'])) {
+            $lstSortby = $this->queryHook['sortby'];
+        } else if (!empty($this->queryHook['main']['sortby'])) {
             $lstSortby = $this->queryHook['main']['sortby'];
-        if (!empty($this->queryHook['sortby']))
-            $lstSortby = $this->queryHook['sortby']; // override the custom declaration
+        } else {
+            // &sortby - comma separated list of couple "field [ASC|DESC]" to sort by.
+            // field from joined resource should be named resourceName_fieldName. e.g: quipComment_body
+            $lstSortby = $this->modx->getOption('sortby', $this->config, 'createdon DESC');
+        }
+
         if (!empty($lstSortby)) {
             $sortCpls = array_map('trim', explode(',', $lstSortby));
             $sorts = array();
@@ -848,12 +913,11 @@ class AdvSearchResults extends AdvSearchUtil {
                 $sorts[] = "{$field} {$dir}";
             }
             $this->config['sortby'] = implode(',', $sorts);
-        }
-        else
+        } else {
             $this->config['sortby'] = $lstSortby;
+        }
 
-        if ($this->dbg)
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Config parameters after checking: ' . print_r($this->config, true), '', '_checkResultsParams');
+        $this->ifDebug('[AdvSearch] Config parameters after checking: ' . print_r($this->config, true), __METHOD__, __FILE__, __LINE__);
 
         return;
     }
@@ -879,15 +943,17 @@ class AdvSearchResults extends AdvSearchUtil {
         $c->select($this->modx->getSelectColumns($main['class'], $main['class'], '', $this->mainFields));
 
         // restrict search to specific keys ($lstIds)
-        if (!empty($this->config['ids']))
+        if (!empty($this->config['ids'])) {
             $c->andCondition(array("{$this->mainClass}.{$this->primaryKey} IN (" . $this->config['ids'] . ")"));
+        }
 
         // restrict search with where condition
         if (!empty($main['where'])) {
-            if (!is_array($main['where']))
+            if (!is_array($main['where'])) {
                 $c->andCondition(array($main['where']));
-            else
+            } else {
                 $c->andCondition($main['where']);
+            }
         }
 
         // add joined resources
@@ -900,8 +966,9 @@ class AdvSearchResults extends AdvSearchUtil {
         }
 
         //============================= add query conditions
-        if (!empty($this->queryHook['andConditions']))
+        if (!empty($this->queryHook['andConditions'])) {
             $c->andCondition($this->queryHook['andConditions']);
+        }
 
         //=============================  add an orderby clause for selected fields
         if (!empty($this->sortbyField)) {
@@ -913,15 +980,12 @@ class AdvSearchResults extends AdvSearchUtil {
         }
 
         // debug mysql query
-        if ($this->dbg)
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, 'SearchString: ' . $this->searchString, '', '_customSearch');
-        if ($this->dbg)
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, 'Select before pagination: ' . $this->niceQuery($c), '', '_customSearch');
+        $this->ifDebug('SearchString: ' . $this->searchString, __METHOD__, __FILE__, __LINE__);
+        $this->ifDebug('Select before pagination: ' . $this->niceQuery($c), __METHOD__, __FILE__, __LINE__);
 
         // get number of results before pagination
         $this->resultsCount = $this->modx->getCount($main['class'], $c);
-        if ($this->dbg)
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, 'Number of results before pagination: ' . $this->resultsCount, '', '_customSearch');
+        $this->ifDebug('Number of results before pagination: ' . $this->resultsCount, __METHOD__, __FILE__, __LINE__);
 
         $idResults = array();  // list of primary keys
         if ($this->resultsCount > 0) {
@@ -930,8 +994,7 @@ class AdvSearchResults extends AdvSearchUtil {
             $c->limit($limit, $this->offset);
 
             // debug mysql query
-            if ($this->dbg)
-                $this->modx->log(modX::LOG_LEVEL_DEBUG, 'Final select: ' . $this->niceQuery($c), '', '_customSearch');
+            $this->ifDebug('Final select: ' . $this->niceQuery($c), __METHOD__, __FILE__, __LINE__);
 
             //============================= get results
             $collection = $this->modx->getCollection($main['class'], $c);
@@ -947,9 +1010,8 @@ class AdvSearchResults extends AdvSearchUtil {
         // set lstIdResults
         $lstIdResults = implode(',', $idResults);
 
-        if ($this->dbg) {
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, "lstIdsResults:" . $lstIdResults, '', '_customSearch');
-        }
+        $this->ifDebug("lstIdsResults:" . $lstIdResults, __METHOD__, __FILE__, __LINE__);
+
         return $this->results;
     }
 
@@ -970,50 +1032,54 @@ class AdvSearchResults extends AdvSearchUtil {
                     $joinedClass = $joined['class'];
                     // add package
                     $joined['packagePath'] = str_replace($pattern, $replacement, $joined['packagePath']);
-					$tablePrefix = isset($joined['tablePrefix']) ? $joined['tablePrefix'] : '';
-					$this->modx->addPackage($joined['package'],$joined['packagePath'], $tablePrefix);
+                    $tablePrefix = isset($joined['tablePrefix']) ? $joined['tablePrefix'] : '';
+                    $this->modx->addPackage($joined['package'], $joined['packagePath'], $tablePrefix);
                     // initialize and add joined displayed fields
                     if (!empty($joined['withFields'])) {
                         $joinedWhereFields = array_map('trim', explode(',', $joined['withFields']));    // fields of joined table where to do the search
-                        if (!empty($joined['fields']))
+                        if (!empty($joined['fields'])) {
                             $joinedFields = array_map('trim', explode(',', $joined['fields']));    // fields of joined table to display
-                        else
+                        } else {
                             $joinedFields = $joinedWhereFields;
-                    }
-                    else {
+                        }
+                    } else {
                         if (!empty($joined['fields'])) {
                             $joinedFields = array_map('trim', explode(',', $joined['fields']));
                             $joinedWhereFields = $joinedFields;
                         }
                     }
 
-					$joinedAlias = isset($joined['alias']) ? $joined['alias'] : $joinedClass;
-					foreach($joinedWhereFields as & $joinedWhereField)
-						$joinedWhereField = $this->modx->escape($joinedAlias) . '.' . $this->modx->escape($joinedWhereField);
+                    $joinedAlias = isset($joined['alias']) ? $joined['alias'] : $joinedClass;
+                    foreach ($joinedWhereFields as & $joinedWhereField) {
+                        $joinedWhereField = $this->modx->escape($joinedAlias) . '.' . $this->modx->escape($joinedWhereField);
+                    }
                     $this->joinedWhereFields = array_merge($this->joinedWhereFields, $joinedWhereFields);
                     // add joined fields
-					$c->select($this->modx->getSelectColumns($joinedClass,$joinedAlias,"{$joinedAlias}_",$joinedFields));
-					foreach($joinedFields as & $joinedField)
-						$joinedField = "{$joinedAlias}_{$joinedField}"; // all the fields of joined class are prefixed by classname_
+                    $c->select($this->modx->getSelectColumns($joinedClass, $joinedAlias, "{$joinedAlias}_", $joinedFields));
+                    foreach ($joinedFields as & $joinedField) {
+                        $joinedField = "{$joinedAlias}_{$joinedField}"; // all the fields of joined class are prefixed by classname_
+                    }
                     $this->joinedFields = array_merge($this->joinedFields, $joinedFields);
                     // add left join
                     list($leftCriteria, $rightCriteria) = array_map('trim', explode('=', $joined['joinCriteria']));
                     $leftCriteriaElts = array_map('trim', explode('.', $leftCriteria));
-					$leftCriteria = (count($leftCriteriaElts) == 1) ? "`{$joinedAlias}`.`{$leftCriteriaElts[0]}`" : "`{$leftCriteriaElts[0]}`.`{$leftCriteriaElts[1]}`";
+                    $leftCriteria = (count($leftCriteriaElts) == 1) ? "`{$joinedAlias}`.`{$leftCriteriaElts[0]}`" : "`{$leftCriteriaElts[0]}`.`{$leftCriteriaElts[1]}`";
                     $rightCriteriaElts = array_map('trim', explode('.', $rightCriteria));
-					$rightCriteria = (count($rightCriteriaElts) == 1) ? "`{$joinedAlias}`.`{$rightCriteriaElts[0]}`" : "`{$rightCriteriaElts[0]}`.`{$rightCriteriaElts[1]}`";
+                    $rightCriteria = (count($rightCriteriaElts) == 1) ? "`{$joinedAlias}`.`{$rightCriteriaElts[0]}`" : "`{$rightCriteriaElts[0]}`.`{$rightCriteriaElts[1]}`";
                     $joined['joinCriteria'] = "{$leftCriteria} = {$rightCriteria}";
-					$c->leftJoin($joinedClass,$joinedAlias,$joined['joinCriteria']);
+                    $c->leftJoin($joinedClass, $joinedAlias, $joined['joinCriteria']);
                     // restrict search with a where condition on joined resource
                     if (!empty($joined['where'])) {
-                        if (!is_array($joined['where']))
+                        if (!is_array($joined['where'])) {
                             $c->andCondition(array($joined['where']));
-                        else
+                        } else {
                             $c->andCondition($joined['where']);
+                        }
                     }
                 }
             }
         }
+
         return $c;
     }
 

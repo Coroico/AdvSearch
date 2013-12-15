@@ -27,4 +27,3 @@ switch($_GET['page']) {
 }
 $output .= '</div>';
 return $output;
-?>
