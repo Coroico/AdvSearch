@@ -146,10 +146,6 @@ abstract class AdvSearchUtil {
 
         $this->config = array_map("trim", $this->config);
 
-        if ($config['debug']) {
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Config parameters after checking: ' . print_r($this->config, true), '', __METHOD__);
-        }
-
         // load default lexicon
         $this->modx->lexicon->load('advsearch:default');
     }

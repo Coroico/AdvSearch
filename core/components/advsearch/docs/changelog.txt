@@ -2,6 +2,7 @@ Changelog for AdvSearch
 
 AdvSearch dev
 -------------------
+- debug form's definition on JS's pagination
 - change set_time_limit to 1000, infinite limit kills.
 - dump the debug output to MODX's error log if it's an ajax call
 - [#63] add queryHook's version to implement different regex

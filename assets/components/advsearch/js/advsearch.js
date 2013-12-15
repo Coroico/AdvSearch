@@ -106,15 +106,15 @@ jQuery(function($) {
             ref = as.ss;
         }
 
-        $('.close-img').each(function(){
+        $('.advsea-close-img').each(function(){
             $(this).remove();
         });
-        as.cl = $('<img src="' + _close + '" class="close-img" alt="' + _closeAlt + '" id="' + p + 'close" />').insertAfter(ref).hide(); // advsearch close img
+        as.cl = $('<img src="' + _close + '" class="advsea-close-img" alt="' + _closeAlt + '" id="' + p + 'close" />').insertAfter(ref).hide(); // advsearch close img
 
-        $('.load-img').each(function(){
+        $('.advsea-load-img').each(function(){
             $(this).remove();
         });
-        as.ld = $('<img src="' + _load + '" class="load-img" alt="' + _loadAlt + '" id="' + p + 'load" />').insertAfter(ref).hide(); // advsearch load img
+        as.ld = $('<img src="' + _load + '" class="advsea-load-img" alt="' + _loadAlt + '" id="' + p + 'load" />').insertAfter(ref).hide(); // advsearch load img
         as.rw = $('#' + p + 'advsea-reswin').hide().removeClass('init'); // advsearch results window - hide window
 
         as.cl.click(function() {
@@ -179,8 +179,6 @@ jQuery(function($) {
     }
 
     function doSearch(as) {
-        console.log('as', as);
-
         var p = as.asid + '_';      // prefix for the instance
 
         if (!as.ls && as.is)
@@ -290,12 +288,12 @@ jQuery(function($) {
 
     function initPrevNext(as) {  // add previous & next links after the display of results
         if (as) {
-            next = as.rw.find('.advsea-next a');
+            var next = as.rw.find('.advsea-next a');
             next.attr("href", "javascript:void(0);"); // remove href
             next.click(function() {
                 prevNext(as, 1);
             });
-            prev = as.rw.find('.advsea-previous a');
+            var prev = as.rw.find('.advsea-previous a');
             prev.attr("href", "javascript:void(0);"); // remove href
             prev.click(function() {
                 prevNext(as, -1);
@@ -307,7 +305,7 @@ jQuery(function($) {
         var ofs = as.ofs + (dir * as.ppg);
         var pars = {
             asid: as.asid,
-            form: as.fm,
+            asform: as.fm,
             sub: as.sb
         };
         pars[as.sx] = as.st;
@@ -326,8 +324,9 @@ jQuery(function($) {
                     html = data.html;
 
                 as.ofs = parseInt(data.ofs);	// offset
-                if (as.gmp && json)
+                if (as.gmp && json) {
                     gmUpdateMap(as.gmp, json);
+                }
 
                 as.rw.reswinUp(as.eff);
                 as.rw.html(html).reswinDown(as.eff);
@@ -356,7 +355,7 @@ jQuery(function($) {
     function pageLink(as, ofs) { // add page link
         var pars = {
             asid: as.asid,
-            form: as.fm,
+            asform: as.fm,
             sub: as.sb
         };
         pars[as.sx] = as.st;
@@ -375,8 +374,9 @@ jQuery(function($) {
                     html = data.html;
 
                 as.ofs = parseInt(data.ofs);	// offset
-                if (as.gmp && json)
+                if (as.gmp && json) {
                     gmUpdateMap(as.gmp, json);
+                }
 
                 as.rw.reswinUp(as.eff);
                 as.rw.html(html).reswinDown(as.eff);

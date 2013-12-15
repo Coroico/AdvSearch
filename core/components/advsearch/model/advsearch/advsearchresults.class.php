@@ -143,8 +143,9 @@ class AdvSearchResults extends AdvSearchUtil {
             if (!empty($this->config['contexts'])) {
                 $contextArray = explode(',', $this->config['contexts']);
                 $contexts = array();
-                foreach ($contextArray as $ctx)
+                foreach ($contextArray as $ctx) {
                     $contexts[] = $this->modx->quote($ctx);
+                }
                 $context = implode(',', $contexts);
                 unset($contexts, $ctx);
             } else {
@@ -183,11 +184,16 @@ class AdvSearchResults extends AdvSearchUtil {
                 $this->ifDebug('SearchString: ' . $this->searchString, __METHOD__, __FILE__, __LINE__);
                 $this->ifDebug('Select before pagination: ' . $this->niceQuery($c), __METHOD__, __FILE__, __LINE__);
 
-                // get number of results before pagination
-                $this->resultsCount = $this->modx->getCount('modResource', $c);
-                $this->ifDebug('Number of results before pagination: ' . $this->resultsCount, __METHOD__, __FILE__, __LINE__);
+                // temporary count only to check existance.
+                $tempC = $c;
+                $tempC->limit(1);
+                $tempCount = $this->modx->getCount('modResource', $tempC);
 
-                if ($this->resultsCount > 0) {
+                if ($tempCount > 0) {
+                    // get number of results before pagination
+                    $this->resultsCount = $this->modx->getCount('modResource', $c);
+                    $this->ifDebug('Number of results before pagination: ' . $this->resultsCount, __METHOD__, __FILE__, __LINE__);
+
                     //============================= add query limits
                     $limit = $this->config['perPage'];
                     // offset,limit relevant only when results are sorted by fields from docFields (tvs and score excluded)
@@ -198,7 +204,7 @@ class AdvSearchResults extends AdvSearchUtil {
                     }
 
                     // debug mysql query
-                    $this->ifDebug('Final select: ' . $this->niceQuery($c), __METHOD__, __FILE__, __LINE__);
+                    $this->ifDebug('Final select after pagination: ' . $this->niceQuery($c), __METHOD__, __FILE__, __LINE__);
 
                     //============================= get results
                     $collection = $this->modx->getCollection('modResource', $c);
@@ -917,7 +923,7 @@ class AdvSearchResults extends AdvSearchUtil {
             $this->config['sortby'] = $lstSortby;
         }
 
-        $this->ifDebug('[AdvSearch] Config parameters after checking: ' . print_r($this->config, true), __METHOD__, __FILE__, __LINE__);
+        $this->ifDebug('Config parameters after checking in class ' . __CLASS__ . ': ' . print_r($this->config, true), __METHOD__, __FILE__, __LINE__);
 
         return;
     }

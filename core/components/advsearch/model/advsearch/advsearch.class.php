@@ -53,10 +53,6 @@ class AdvSearch extends AdvSearchUtil {
             $config['effect'] = $modx->getOption('effect', $config, 'basic');
         }
 
-        if ($config['debug']) {
-            $modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Config parameters after checking: ' . print_r($config, true), '', __METHOD__);
-        }
-
         return parent::__construct($modx, $config);
     }
 
@@ -91,6 +87,7 @@ class AdvSearch extends AdvSearchUtil {
                         'offset' => $this->offset,
                         'queryHook' => $this->getHooks('queryHook')
                     );
+
                     $defaultAdvSearchCorePath = $this->modx->getOption('core_path') . 'components/advsearch/';
                     $advSearchCorePath = $this->modx->getOption('advsearch.core_path', null, $defaultAdvSearchCorePath);
                     $this->searchResults = $this->modx->getService('advsearchresults', 'AdvSearchResults', $advSearchCorePath . 'model/advsearch/');
@@ -549,7 +546,7 @@ class AdvSearch extends AdvSearchUtil {
             }
         }
 
-        $this->ifDebug('Config parameters after checking: ' . print_r($this->config, true), __METHOD__, __FILE__, __LINE__);
+        $this->ifDebug('Config parameters after checking in class ' . __CLASS__ . ': ' . print_r($this->config, true), __METHOD__, __FILE__, __LINE__);
 
         return true;
     }
