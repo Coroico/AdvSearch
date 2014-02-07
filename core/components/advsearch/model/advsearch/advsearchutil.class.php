@@ -4,7 +4,8 @@
  * AdvSearch - AdvSearchUtil class
  *
  * @package 	AdvSearch
- * @author	Coroico
+ * @author      Coroico
+ *              goldsky - goldsky@virtudraft.com
  * @copyright 	Copyright (c) 2012 by Coroico <coroico@wangba.fr>
  *
  * @tutorial	Some useful methods shared by advSearch classes
@@ -14,7 +15,7 @@
 define('PKG_VERSION', '1.0.1');
 define('PKG_RELEASE', 'dev');
 
-abstract class AdvSearchUtil {
+class AdvSearchUtil {
 
     public $modx;
     public $config = array();
@@ -45,7 +46,7 @@ abstract class AdvSearchUtil {
         $this->modx = & $modx;
 
         // &debug = [ 0 | 1 ]
-        $config['debug'] = $modx->getOption('debug', $config, 0);
+        $config['debug'] = $this->modx->getOption('debug', $config, 0);
         if ($config['debug']) {
             // error_reporting(E_ALL & ~E_NOTICE); // sets error_reporting to everything except NOTICE remarks
             error_reporting(E_ALL);
@@ -58,18 +59,7 @@ abstract class AdvSearchUtil {
             }
             $this->modx->setLogLevel(modX::LOG_LEVEL_DEBUG);
         }
-
-        $revoVersion = $this->modx->getVersionData();
-        $systemInfo = array(
-            "MODx version" => $revoVersion['full_version'],
-            "Php version" => phpversion(),
-            "MySql version" => $this->getMysqlVersion(),
-            "AdvSearch version" => PKG_VERSION . ' ' . PKG_RELEASE,
-        );
-        if ($config['debug']) {
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] System environment: ' . print_r($systemInfo, true), '', __METHOD__);
-            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Config parameters before checking: ' . print_r($config, true), '', __METHOD__);
-        }
+        $this->dbg = ($config['debug'] > 0);
 
         // charset [ charset | 'UTF-8' ]
         $config['charset'] = $this->modx->config['modx_charset'];
@@ -87,52 +77,6 @@ abstract class AdvSearchUtil {
             throw new Exception($msg);
         }
 
-        // &asId - [Unique id for advSearch instance | 'as0' ]
-        $config['asId'] = $this->modx->getOption('asId', $config, 'as0');
-
-        // &method [ 'post' | 'get' ]
-        $config['method'] = strtolower($this->modx->getOption('method', $config, 'get'));
-
-        // &init  [ 'none' | 'all' ]
-        $init = $this->modx->getOption('init', $config, 'none');
-        $config['init'] = (($init == 'all') || ($init == 'none')) ? $init : 'none';
-
-        // &libraryPath under assets [ path | 'libraries/' ]
-        $path = $this->modx->getOption('libraryPath', $config, 'libraries/');
-        $path = $this->modx->getOption('assets_path') . $path;
-        $config['libraryPath'] = is_dir($path) ? $path : $this->modx->getOption('assets_path') . 'libraries/';
-        // First make sure the Zend library is in the include path:
-        ini_set('include_path', ini_get('include_path') . PATH_SEPARATOR . $config['libraryPath']);
-
-        // &offsetIndex [ string | 'offset' ] : The name of the REQUEST parameter to use for the pagination offset
-        $config['offsetIndex'] = $this->modx->getOption('offsetIndex', $config, 'offset');
-
-        // &searchIndex [ string | 'search' ]
-        $config['searchIndex'] = $this->modx->getOption('searchIndex', $config, 'search');
-
-        // searchString [ string | '' ]
-        $config['searchString'] = $this->modx->getOption('searchString', $config, '');
-
-        // &toPlaceholder [ string | '' ]
-        $config['toPlaceholder'] = $this->modx->getOption('toPlaceholder', $config, '');
-
-        // &addCss - [ 0 | 1 ]
-        $config['addCss'] = (bool)(int) $this->modx->getOption('addCss', $config, 1);
-
-        // &addJs - [ 0 | 1 | 2 ]
-        $addJs = (int) $this->modx->getOption('addJs', $config, 1);
-        $config['addJs'] = ($addJs == 0 || $addJs == 1 || $addJs == 2) ? $addJs : 1;
-
-        // &withAjax [ 1 | 0 ]
-        $withAjax = (int) $this->modx->getOption('withAjax', $config, 0);
-        $config['withAjax'] = (($withAjax == 0 || $withAjax == 1)) ? $withAjax : 0;
-
-        // &urlScheme
-        $config['urlScheme'] = $this->modx->getOption('urlScheme', $config, -1);
-
-        // &hideLinks
-        $config['hideLinks'] = $this->modx->getOption('hideLinks', $config);
-
         //===============================================================================================================================
         // path and url
         $corePath = $this->modx->getOption('advSearch.core_path', null, $this->modx->getOption('core_path') . 'components/advsearch/');
@@ -144,10 +88,79 @@ abstract class AdvSearchUtil {
             'modelPath' => $corePath . 'model/',
                 ), $config);
 
-        $this->config = array_map("trim", $this->config);
+        $this->config = array_map("trim", array_merge($this->config, $config));
 
         // load default lexicon
         $this->modx->lexicon->load('advsearch:default');
+    }
+
+    protected function loadDefaultConfigs() {
+        $this->config = array_map("trim", $this->config);
+
+        $revoVersion = $this->modx->getVersionData();
+        $systemInfo = array(
+            "MODx version" => $revoVersion['full_version'],
+            "Php version" => phpversion(),
+            "MySql version" => $this->getMysqlVersion(),
+            "AdvSearch version" => PKG_VERSION . ' ' . PKG_RELEASE,
+        );
+        if ($this->dbg) {
+            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] System environment: ' . print_r($systemInfo, true), '', __METHOD__);
+            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Config parameters before checking: ' . print_r($this->config, true), '', __METHOD__);
+        }
+
+        // &asId - [Unique id for advSearch instance | 'as0' ]
+        $this->config['asId'] = $this->modx->getOption('asId', $this->config, 'as0');
+
+        // &method [ 'post' | 'get' ]
+        $this->config['method'] = strtolower($this->modx->getOption('method', $this->config, 'get'));
+
+        // &init  [ 'none' | 'all' ]
+        $init = $this->modx->getOption('init', $this->config, 'none');
+        $this->config['init'] = (($init == 'all') || ($init == 'none')) ? $init : 'none';
+
+        // &libraryPath under assets [ path | 'libraries/' ]
+        $path = $this->modx->getOption('libraryPath', $this->config, 'libraries/');
+        $path = $this->modx->getOption('assets_path') . $path;
+        $this->config['libraryPath'] = is_dir($path) ? $path : $this->modx->getOption('assets_path') . 'libraries/';
+        // First make sure the Zend library is in the include path:
+        ini_set('include_path', ini_get('include_path') . PATH_SEPARATOR . $this->config['libraryPath']);
+
+        /* deprecated @2.0.0 */
+        // &offsetIndex [ string | 'offset' ] : The name of the REQUEST parameter to use for the pagination offset
+        $this->config['offsetIndex'] = $this->modx->getOption('offsetIndex', $this->config, 'offset');
+
+        // &pageIndex [ string | 'page' ] : The name of the REQUEST parameter to use for the pagination page
+        $this->config['pageIndex'] = $this->modx->getOption('pageIndex', $this->config, 'page');
+
+        // &searchIndex [ string | 'search' ]
+        $this->config['searchIndex'] = $this->modx->getOption('searchIndex', $this->config, 'search');
+
+        // searchString [ string | '' ]
+        $this->config['searchString'] = $this->modx->getOption('searchString', $this->config, '');
+
+        // &toPlaceholder [ string | '' ]
+        $this->config['toPlaceholder'] = $this->modx->getOption('toPlaceholder', $this->config, '');
+
+        // &addCss - [ 0 | 1 ]
+        $this->config['addCss'] = (bool)(int) $this->modx->getOption('addCss', $this->config, 1);
+
+        // &addJs - [ 0 | 1 | 2 ]
+        $addJs = (int) $this->modx->getOption('addJs', $this->config, 1);
+        $this->config['addJs'] = ($addJs == 0 || $addJs == 1 || $addJs == 2) ? $addJs : 1;
+
+        // &withAjax [ 1 | 0 ]
+        $withAjax = (int) $this->modx->getOption('withAjax', $this->config, 0);
+        $this->config['withAjax'] = (($withAjax == 0 || $withAjax == 1)) ? $withAjax : 0;
+
+        // &urlScheme
+        $this->config['urlScheme'] = $this->modx->getOption('urlScheme', $this->config, -1);
+
+        // &hideLinks
+        $this->config['hideLinks'] = $this->modx->getOption('hideLinks', $this->config);
+
+        return $this->config;
+
     }
 
     /**
@@ -156,6 +169,14 @@ abstract class AdvSearchUtil {
      */
     public function setConfigs(array $config = array()) {
         $this->config = array_merge($this->config, $config);
+    }
+
+    /**
+     * Get configs
+     * @return array configurations
+     */
+    public function getConfigs() {
+        return $this->config;
     }
 
     /**
@@ -308,7 +329,6 @@ abstract class AdvSearchUtil {
             // tricks @FILE:
             $tplFile = ltrim($tplFile, ':');
             $tplFile = trim($tplFile);
-            $tplFile = $this->replacePropPhs($tplFile);
             try {
                 $output = $this->parseTplFile($tplFile, $phs);
             } catch (Exception $e) {
@@ -330,7 +350,8 @@ abstract class AdvSearchUtil {
                     $output = $this->parseTplFile($f, $phs);
                 } catch (Exception $e) {
                     $output = $e->getMessage();
-                    return 'Chunk: ' . $tplChunk . ' is not found, neither the file ' . $output;
+                    $this->modx->log(modX::LOG_LEVEL_DEBUG, 'Chunk: ' . $tplChunk . ' is not found, neither the file ' . $output);
+                    return;
                 }
             } else {
 //                $output = $this->modx->getChunk($tplChunk, $phs);
@@ -357,7 +378,6 @@ abstract class AdvSearchUtil {
         $chunk = $this->modx->newObject('modChunk');
         $chunk->setContent($code);
         $chunk->setCacheable(false);
-        $phs = $this->replacePropPhs($phs);
         $chunk->_processed = false;
         return $chunk->process($phs);
     }
@@ -491,8 +511,12 @@ abstract class AdvSearchUtil {
      * @return string The select statement
      */
     public function niceQuery(xPDOQuery $query = null) {
-        $searched = array("SELECT", "GROUP_CONCAT", "LEFT JOIN", "INNER JOIN", "EXISTS", "LIMIT", "FROM", "WHERE", "GROUP BY", "HAVING", "ORDER BY", "OR", "AND", "IFNULL", "ON");
-        $replace = array(" \r\nSELECT", " \r\nGROUP_CONCAT", " \r\nLEFT JOIN", " \r\nINNER JOIN", " \r\nEXISTS", " \r\nLIMIT", " \r\nFROM", " \r\nWHERE", " \r\nGROUP BY", " \r\nHAVING", " ORDER BY", " \r\nOR", " \r\nAND", " \r\nIFNULL", " \r\nON");
+        $searched = array("SELECT", "GROUP_CONCAT", "LEFT JOIN", "INNER JOIN", "EXISTS", "LIMIT", "FROM",
+            "WHERE", "GROUP BY", "HAVING", "ORDER BY", "OR", "AND", "IFNULL", "ON", "MATCH", "AGAINST",
+            "COUNT");
+        $replace = array(" \r\nSELECT", " \r\nGROUP_CONCAT", " \r\nLEFT JOIN", " \r\nINNER JOIN", " \r\nEXISTS", " \r\nLIMIT", " \r\nFROM",
+            " \r\nWHERE", " \r\nGROUP BY", " \r\nHAVING", " ORDER BY", " \r\nOR", " \r\nAND", " \r\nIFNULL", " \r\nON", " \r\nMATCH", " \r\nAGAINST",
+            " \r\nCOUNT");
         $output = '';
         if (isset($query)) {
             $query->prepare();
@@ -521,6 +545,48 @@ abstract class AdvSearchUtil {
             }
             $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] ' . $msg, $target, $def, $file, $line);
         }
+    }
+
+    /**
+     * Replacing MODX's getCount(), because it has bug on counting SQL with function.<br>
+     * Retrieves a count of xPDOObjects by the specified xPDOCriteria.
+     *
+     * @param string $className Class of xPDOObject to count instances of.
+     * @param mixed $criteria Any valid xPDOCriteria object or expression.
+     * @return integer The number of instances found by the criteria.
+     * @see xPDO::getCount()
+     * @link http://forums.modx.com/thread/88619/getcount-fails-if-the-query-has-aggregate-leaving-having-039-s-field-undefined The discussion for this
+     */
+    public function getQueryCount($className, $criteria= null) {
+        $count= 0;
+        if ($query= $this->modx->newQuery($className, $criteria)) {
+            $expr= '*';
+            if ($pk= $this->modx->getPK($className)) {
+                if (!is_array($pk)) {
+                    $pk= array ($pk);
+                }
+                $expr= $this->modx->getSelectColumns($className, 'alias', '', $pk);
+            }
+            $query->prepare();
+            $sql = $query->toSQL();
+            $stmt= $this->modx->query("SELECT COUNT($expr) FROM ($sql) alias");
+            if ($stmt) {
+                $tstart = microtime(true);
+                if ($stmt->execute()) {
+                    $this->modx->queryTime += microtime(true) - $tstart;
+                    $this->modx->executedQueries++;
+                    if ($results= $stmt->fetchAll(PDO::FETCH_COLUMN)) {
+                        $count= reset($results);
+                        $count= intval($count);
+                    }
+                } else {
+                    $this->modx->queryTime += microtime(true) - $tstart;
+                    $this->modx->executedQueries++;
+                    $this->modx->log(modX::LOG_LEVEL_ERROR, "[AdvSearch] Error " . $stmt->errorCode() . " executing statement: \n" . print_r($stmt->errorInfo(), true), '', __METHOD__, __FILE__, __LINE__);
+                }
+            }
+        }
+        return $count;
     }
 
 }

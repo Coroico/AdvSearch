@@ -5,6 +5,7 @@
  *
  * @package 	AdvSearch
  * @author		Coroico
+ *              goldsky - goldsky@virtudraft.com
  * @copyright 	Copyright (c) 2012 by Coroico <coroico@wangba.fr>
  *
  * @tutorial	Main class to get & display search results
@@ -15,45 +16,19 @@ include_once dirname(__FILE__) . "/advsearchutil.class.php";
 class AdvSearch extends AdvSearchUtil {
 
     public $searchResults = null;
+    /* deprecated since 2.0.0 */
     protected $offset = 0;
+    protected $page = 1;
     protected $queryHook = null;
+    protected $displayedFields = array();
     protected $extractFields = array();
     protected $nbExtracts;
     protected $asr = null;
 
     public function __construct(modX & $modx, array $config = array()) {
 
-        // &maxWords [ 1 < int < 30 ]
-        $maxWords = (int) $modx->getOption('maxWords', $config, 20);
-        $config['maxWords'] = (($maxWords <= 30) && ($maxWords >= 1)) ? $maxWords : 20;
-
-        // &minChars [  2 <= int <= 10 ]
-        $minChars = (int) $modx->getOption('minChars', $config, 3);
-        $config['minChars'] = (($minChars <= 10) && ($minChars >= 2)) ? $minChars : 3;
-
-        // &queryHook [ snippet name | '' ]
-        $config['queryHook'] = trim($modx->getOption('queryHook', $config, ''));
-
-        // &postHook [ a snippet name | '' ]
-        $config['postHook'] = trim($modx->getOption('postHook', $config, ''));
-
-        // &postHookTpls [ A comma-separated list of templates for the postHook | '' ]
-        // a list of templates used by the postHook to style the postHooked result
-        $postHookTplsLst = $modx->getOption('postHookTpls', $config, '');
-        $postHookTpls = (!empty($postHookTplsLst)) ? array_map('trim', explode(',', $postHookTplsLst)) : array();
-        $config['postHookTpls'] = implode(',', $postHookTpls);
-
-        // ajax mode parameters
-        if ($config['withAjax']) {
-            // &opacity - [ 0. < float <= 1. ]  Should be a float value
-            $opacity = floatval($modx->getOption('opacity', $config, 1.));
-            $config['opacity'] = ($opacity > 0. && $opacity <= 1.) ? $opacity : 1.0;
-
-            // &effect - [ 'basic' | 'showfade' | 'slidefade' ]
-            $config['effect'] = $modx->getOption('effect', $config, 'basic');
-        }
-
-        return parent::__construct($modx, $config);
+        parent::__construct($modx, $config);
+        parent::loadDefaultConfigs();
     }
 
     /**
@@ -64,117 +39,160 @@ class AdvSearch extends AdvSearchUtil {
      */
     public function output() {
         $output = '';
-        $msg = '';
 
-        if ($this->forThisInstance()) {
-
-            // initialize searchString
-            if ($this->_initSearchString('', $msg)) {
-
-                // initialise offset of results
-                if (isset($_REQUEST[$this->config['offsetIndex']])) {
-                    $this->offset = $this->sanitize($_REQUEST[$this->config['offsetIndex']]);
-                } else {
-                    $this->offset = 0;
-                }
-
-                // The first time display or not results
-                $init = (isset($_REQUEST['asId']) || isset($_REQUEST['sub'])) ? 'all' : $this->config['init'];
-                if ($init == 'all') {
-                    $asContext = array(
-                        'searchString' => $this->searchString,
-                        'searchQuery' => $this->searchQuery,
-                        'offset' => $this->offset,
-                        'queryHook' => $this->getHooks('queryHook')
-                    );
-
-                    $defaultAdvSearchCorePath = $this->modx->getOption('core_path') . 'components/advsearch/';
-                    $advSearchCorePath = $this->modx->getOption('advsearch.core_path', null, $defaultAdvSearchCorePath);
-                    $this->searchResults = $this->modx->getService('advsearchresults', 'AdvSearchResults', $advSearchCorePath . 'model/advsearch/');
-                    if (!($this->searchResults instanceof AdvSearchResults)) {
-                        $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] Could not load AdvSearchResults class.');
-                        return false;
-                    }
-                    $this->searchResults->setConfigs($this->config);
-                    $this->searchResults->doSearch($asContext);
-                    $this->getHooks('postHook');
-
-                    // display results
-                    $typout = explode(',', $this->config['output']);
-                    $out = array();
-                    foreach ($typout as $to) {
-                        if ($to == 'html') {
-                            if ($this->searchResults->resultsCount) {
-                                $out[$to] = $this->renderOutput($this->searchResults, $asContext);
-                            } else {
-                                $out[$to] = $this->modx->lexicon('advsearch.no_results');
-                            }
-                        } elseif ($to == 'ids') {
-                            $out[$to] = json_encode($this->searchResults->idResults);
-                        } elseif ($to == 'json') {
-                            $out[$to] = json_encode($this->searchResults->results);
-                        }
-                    }
-
-                    if ($this->config['withAjax']) {
-                        $out['ofs'] = $this->offset;
-                        $out['ppg'] = $this->config['perPage'];
-                        $out['nbr'] = $this->searchResults->resultsCount;
-                        $out['pgt'] = $this->config['pagingType'];
-                        $out['opc'] = $this->config['opacity'];
-                        $out['eff'] = $this->config['effect'];
-
-                        $output = json_encode($out);
-                    } else {
-                        if (count($typout) > 1) {
-                            $output = json_encode($out);
-                        } else {
-                            $output = $out[$typout[0]];
-                        }
-                    }
-                }
-            } else {
-                $output = $msg;
-            }
-
-            if (!empty($this->config['toPlaceholder'])) {
-                $this->modx->setPlaceholder($this->config['toPlaceholder'], $output);
-                $output = '';
-            }
-
-            // log elapsed time
-            $this->ifDebug('Elapsed time: ' . $this->getElapsedTime(), __METHOD__, __FILE__, __LINE__);
-
-            return $output;
+        if (!$this->forThisInstance()) {
+            return FALSE;
         }
+
+        // The first time display or not results
+        $asId = filter_input(INPUT_GET, 'asId', FILTER_SANITIZE_SPECIAL_CHARS);
+        $sub = filter_input(INPUT_GET, 'sub', FILTER_SANITIZE_SPECIAL_CHARS);
+        $init = (!empty($asId) || !empty($sub)) ? 'all' : $this->config['init'];
+        if ($init !== 'all') {
+            return;
+        }
+
+        // &cacheQuery [ 0 | 1 ]
+        $this->config['cacheQuery'] = (bool) $this->modx->getOption('cacheQuery', $this->config, 0);
+
+        // &cacheTime [ 0 | 1 ]
+        $this->config['cacheTime'] = (int) $this->modx->getOption('cacheTime', $this->config, 7200);
+
+        // &maxWords [ 1 < int < 30 ]
+        $maxWords = (int) $this->modx->getOption('maxWords', $this->config, 20);
+        $this->config['maxWords'] = (($maxWords <= 30) && ($maxWords >= 1)) ? $maxWords : 20;
+
+        // &minChars [  2 <= int <= 10 ]
+        $minChars = (int) $this->modx->getOption('minChars', $this->config, 3);
+        $this->config['minChars'] = (($minChars <= 10) && ($minChars >= 2)) ? $minChars : 3;
+
+        // &queryHook [ snippet name | '' ]
+        $this->config['queryHook'] = trim($this->modx->getOption('queryHook', $this->config, ''));
+
+        // &postHook [ a snippet name | '' ]
+        $this->config['postHook'] = trim($this->modx->getOption('postHook', $this->config, ''));
+
+        // &postHookTpls [ A comma-separated list of templates for the postHook | '' ]
+        // a list of templates used by the postHook to style the postHooked result
+        $postHookTplsLst = $this->modx->getOption('postHookTpls', $this->config, '');
+        $postHookTpls = (!empty($postHookTplsLst)) ? array_map('trim', explode(',', $postHookTplsLst)) : array();
+        $this->config['postHookTpls'] = implode(',', $postHookTpls);
+
+        // ajax mode parameters
+        if ($this->config['withAjax']) {
+            // &opacity - [ 0. < float <= 1. ]  Should be a float value
+            $opacity = floatval($this->modx->getOption('opacity', $this->config, 1.));
+            $this->config['opacity'] = ($opacity > 0. && $opacity <= 1.) ? $opacity : 1.0;
+
+            // &effect - [ 'basic' | 'showfade' | 'slidefade' ]
+            $this->config['effect'] = $this->modx->getOption('effect', $this->config, 'basic');
+        }
+
+        // &clearDefault [ 0| 1 ]
+        $this->config['clearDefault'] = (bool)$this->modx->getOption('clearDefault', $this->config, 0);
+
+        // initialize searchString
+        if (!$this->_initSearchString()) {
+            $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] Could not load _initSearchString: ' . $this->getError());
+            return;
+        }
+
+        // initialise page of results
+        $page = filter_input(INPUT_GET, $this->config['pageIndex'], FILTER_SANITIZE_NUMBER_INT);
+        if (!empty($page)) {
+            $this->page = intval($page) > 0 ? intval($page) : 1;
+        } else {
+            $this->page = 1;
+        }
+
+        $asContext = array(
+            'searchString' => $this->searchString,
+            'searchQuery' => $this->searchQuery,
+            'searchTerms' => $this->searchTerms,
+            'offset' => $this->offset,
+            'page' => $this->page,
+            'queryHook' => $this->getHooks('queryHook')
+        );
+
+        $defaultAdvSearchCorePath = $this->modx->getOption('core_path') . 'components/advsearch/';
+        $advSearchCorePath = $this->modx->getOption('advsearch.core_path', null, $defaultAdvSearchCorePath);
+        $this->searchResults = $this->modx->getService('advsearchresults', 'AdvSearchResults', $advSearchCorePath . 'model/advsearch/', $this->config);
+        if (!($this->searchResults instanceof AdvSearchResults)) {
+            $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] Could not load AdvSearchResults class.');
+            return false;
+        }
+        $this->searchResults->doSearch($asContext);
+        // searchResults resets "page" to 1 if the offset beyond the limit
+        $this->page = $this->searchResults->getPage();
+        $this->getHooks('postHook');
+
+        // display results
+        $typout = explode(',', $this->config['output']);
+        $out = array();
+        foreach ($typout as $to) {
+            if ($to == 'html') {
+                if ($this->searchResults->resultsCount) {
+                    $out[$to] = $this->renderOutput($this->searchResults);
+                } else {
+                    $out[$to] = $this->modx->lexicon('advsearch.no_results');
+                }
+            } elseif ($to == 'ids') {
+                $out[$to] = json_encode($this->searchResults->idResults);
+            } elseif ($to == 'json') {
+                $out[$to] = json_encode($this->searchResults->results);
+            }
+        }
+
+        if ($this->config['withAjax']) {
+            $out['pag'] = $this->page;
+            $out['ppg'] = $this->config['perPage'];
+            $out['nbr'] = $this->searchResults->resultsCount;
+            $out['pgt'] = $this->config['pagingType'];
+            $out['opc'] = $this->config['opacity'];
+            $out['eff'] = $this->config['effect'];
+            $out['cdf'] = $this->config['clearDefault'];
+
+            $output = json_encode($out);
+        } else {
+            if (count($typout) > 1) {
+                $output = json_encode($out);
+            } else {
+                $output = $out[$typout[0]];
+            }
+        }
+
+        if (!empty($this->config['toPlaceholder'])) {
+            $this->modx->setPlaceholder($this->config['toPlaceholder'], $output);
+            $output = '';
+        }
+
+        // log elapsed time
+        $this->ifDebug('Elapsed time: ' . $this->getElapsedTime(), __METHOD__, __FILE__, __LINE__);
+
+        return $output;
     }
 
     /**
      * _initSearchString - initialize searchString && searchQuery
-     *
+     * @deprecated  should be moved to the controllers
      * @access private
      * @param string $defaultString Default search string value
-     * @param string $msgerr Error message
      * @return boolean Returns true if correctly initialized, otherwise false.
      */
-    private function _initSearchString($defaultString = '', & $msgerr = '') {
-
+    private function _initSearchString($defaultString = '') {
         if (isset($this->config['searchString'])) {
             $defaultString = $this->config['searchString'];
         }
 
-        if (isset($_REQUEST[$this->config['searchIndex']]) && !empty($_REQUEST[$this->config['searchIndex']])) {
-            $request = $this->sanitizeSearchString($_REQUEST[$this->config['searchIndex']]);
-            if ($request == $this->modx->lexicon('advsearch.box_text')) {
-                $searchString = '';
-            } else {
-                $searchString = $request;
-            }
+        $searchString = '';
+        $filteredString = filter_input(INPUT_GET, $this->config['searchIndex'], FILTER_SANITIZE_SPECIAL_CHARS);
+        if (!empty($filteredString)) {
+            $searchString = $this->sanitizeSearchString($filteredString);
         } else {
             $searchString = $defaultString;
         }
 
-        if (!empty($searchString)) {
+        if (in_array($this->config['engine'], array('all', 'zend'))) {
             // load the zend lucene library
             $file = $this->config['libraryPath'] . 'Zend/Search/Lucene.php';
 
@@ -182,8 +200,9 @@ class AdvSearch extends AdvSearchUtil {
                 require_once $file;
                 // parse query
                 $searchQuery = Zend_Search_Lucene_Search_QueryParser::parse($searchString, $this->config['charset']);
+
                 // valid maxwords and minchars
-                $valid = $this->validQuery($searchQuery, true, $msgerr);
+                $valid = $this->_validQuery($searchQuery, true);
                 if (!$valid) {
                     return false;
                 }
@@ -195,10 +214,17 @@ class AdvSearch extends AdvSearchUtil {
                 return false;
             }
         } else {
-            // set the default value
-            $this->searchString = $defaultString;
+            $this->searchString = $searchString;
             $this->searchQuery = null;
+            $matches = null;
+            preg_match('/^(\'|")[\s\S](\'|")$/', $searchString, $matches);
+            if ($matches) {
+                $this->validTerm($searchString, 'phrase', TRUE);
+            } else {
+                $this->validTerm($searchString, 'word', TRUE);
+            }
         }
+
         return true;
     }
 
@@ -216,6 +242,7 @@ class AdvSearch extends AdvSearchUtil {
                 $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] Could not load AdvSearchHooks class.');
                 return false;
             }
+
             $ashooks = new AdvSearchHooks($this);
             if (!empty($ashooks)) {
                 if ($type === 'queryHook') {
@@ -231,6 +258,7 @@ class AdvSearch extends AdvSearchUtil {
                     $ashooks->loadMultiple($this->config[$type], array(
                         'hooks' => $this->config[$type],
                         'offset' => $this->offset,
+                        'page' => $this->page,
                         'perPage' => $this->config['perPage'],
                         'postHookTpls' => $this->config['postHookTpls']
                     ));
@@ -251,17 +279,16 @@ class AdvSearch extends AdvSearchUtil {
      * @access private
      * @param Zend_Search_Lucene_Search_Query $query The query to validate
      * @param boolean/null $sign true if mandatory, null if optional, false if excluded
-     * @param string $msgerr Error message
      * @param integer $nbTerms Number of terms already processed
      * @return boolean Returns true if valid, otherwise false.
      */
-    private function _validQuery($query = null, $sign = true, & $msgerr = '', & $nbTerms = 0) {
+    private function _validQuery($query = null, $sign = true, & $nbTerms = 0) {
         if ($query instanceOf Zend_Search_Lucene_Search_Query_Boolean) {
             $subqueries = $query->getSubqueries();
             $signs = $query->getSigns();
             $nbs = count($subqueries);
             for ($i = 0; $i < $nbs; $i++) {
-                $valid = $this->_validQuery($subqueries[$i], $signs[$i], $msgerr, $nbTerms);
+                $valid = $this->_validQuery($subqueries[$i], $signs[$i], $nbTerms);
                 if (!$valid) {
                     return false;
                 }
@@ -270,16 +297,17 @@ class AdvSearch extends AdvSearchUtil {
             return true;
         } else if ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Phrase) {
             $phrase = $query->__toString();
-            $valid = $this->validTerm($phrase, 'phrase', $sign, $msgerr, $nbTerms);
+            $valid = $this->validTerm($phrase, 'phrase', $sign, $nbTerms);
 
             return $valid;
         } else if ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Term) {
             $term = $query->__toString();
-            $valid = $this->validTerm($term, 'word', $sign, $msgerr, $nbTerms);
+            $valid = $this->validTerm($term, 'word', $sign, $nbTerms);
 
             return $valid;
         } else {
             $msgerr = $this->modx->lexicon('advsearch.invalid_query');
+            $this->setError($msgerr);
 
             return false;
         }
@@ -291,17 +319,16 @@ class AdvSearch extends AdvSearchUtil {
      * @access private
      * @param string or array $term The term(s) to validate
      * @param boolean/null $sign true if mandatory, null if optional, false if excluded
-     * @param string $msgerr error message
      * @param integer $nbTerms Number of terms already processed
      * @return boolean Returns true if valid, otherwise false.
      */
 
-    public function validTerm($term, $type, $sign, & $msgerr, & $nbTerms = 0, $record = true) {
+    public function validTerm($term, $type, $sign, & $nbTerms = 0, $record = true) {
         if ($type == 'phrase') {
             $phrase = substr($term, 1, -1); // remove beginning and end quotes
             $phraseArray = explode(' ', $phrase);
             foreach ($phraseArray as $word) {
-                $valid = $this->validTerm($word, 'word', $sign, $msgerr, $nbTerms, false);
+                $valid = $this->validTerm($word, 'word', $sign, $nbTerms, false);
                 if (!$valid) {
                     return false;
                 }
@@ -315,6 +342,7 @@ class AdvSearch extends AdvSearchUtil {
                     'minterm' => $term,
                     'minchars' => $this->config['minChars']
                 ));
+                $this->setError($msgerr);
 
                 return false;
             }
@@ -323,6 +351,7 @@ class AdvSearch extends AdvSearchUtil {
                 $msgerr = $this->modx->lexicon('advsearch.maxwords', array(
                     'maxwords' => $this->config['maxwords']
                 ));
+                $this->setError($msgerr);
 
                 return false;
             }
@@ -344,20 +373,16 @@ class AdvSearch extends AdvSearchUtil {
      */
 
     public function renderOutput(AdvSearchResults $asr = null) {
-        $placeholders = array();
-        $output = '';
-
         if (is_null($asr)) {
-            return $output;
+            return FALSE;
         }
 
         $results = $asr->results;
         $pageResultsCount = count($results);
         $resultsCount = $asr->resultsCount;
         $this->searchTerms = array_unique($this->searchTerms);
-
-        $displayedFields = array_merge($asr->mainFields, $asr->tvFields, $asr->joinedFields);
-        $this->_checkDisplayParams($displayedFields);
+        $this->displayedFields = array_merge($asr->mainFields, $asr->tvFields, $asr->joinedFields);
+        $this->_loadOutputProperties();
 
         // add advSearch css file
         if ($this->config['addCss'] == 1) {
@@ -375,10 +400,8 @@ class AdvSearch extends AdvSearchUtil {
 
         // results
         $resultsOutput = '';
-        $idx = $this->offset + 1;
-
+        $idx = ($this->page - 1) * $this->config['perPage'] + 1;
         foreach ($results as $result) {
-
             if ($this->nbExtracts && count($this->extractFields)) {
                 $text = '';
                 foreach ($this->extractFields as $extractField) {
@@ -394,7 +417,6 @@ class AdvSearch extends AdvSearchUtil {
 
             $result['idx'] = $idx;
             $result['extracts'] = $extracts;
-
             if (empty($result['link'])) {
                 $ctx = (!empty($result['context_key'])) ? $result['context_key'] : $this->modx->context->get('key');
                 if ((int) $result[$asr->primaryKey]) {
@@ -406,6 +428,16 @@ class AdvSearch extends AdvSearchUtil {
             $idx++;
         }
 
+        // set global placeholders
+        // query: search term entered by user, total: number of results, etime: elapsed time
+        $placeholders = array(
+            'query' => $this->searchString,
+            'total' => $resultsCount,
+            'etime' => $this->getElapsedTime()
+        );
+
+        $this->modx->setPlaceholders($placeholders, $this->config['placeholderPrefix']);
+
         $resultsPh = array(
             'resultInfo' => $infoOutput,
             'paging' => $pagingOutput,
@@ -414,15 +446,6 @@ class AdvSearch extends AdvSearchUtil {
             'moreResults' => $moreLinkOutput
         );
         $output = $this->processElementTags($this->parseTpl($this->config['containerTpl'], $resultsPh));
-
-        // set global placeholders
-        // query: search term entered by user, total: number of results, etime: elapsed time
-        $placeholders = array(
-            'query' => $this->searchString,
-            'total' => $resultsCount,
-            'etime' => $this->getElapsedTime()
-        );
-        $this->modx->setPlaceholders($placeholders, $this->config['placeholderPrefix']);
 
         return $output;
     }
@@ -433,7 +456,7 @@ class AdvSearch extends AdvSearchUtil {
      * @access private
      * @param array $displayedFields Fields to display
      */
-    private function _checkDisplayParams($displayedFields) {
+    private function _loadOutputProperties() {
 
         // &output
         $outputLst = $this->modx->getOption('output', $this->config, 'output');
@@ -446,13 +469,13 @@ class AdvSearch extends AdvSearchUtil {
 
         // &containerTpl [ chunk name | 'AdvSearchResults' ]
         $containerTpl = $this->modx->getOption('containerTpl', $this->config, 'AdvSearchResults');
-        $chunk = $this->parseTpl($containerTpl);
-        $this->config['containerTpl'] = (empty($chunk)) ? 'AdvSearchResults' : $containerTpl;
+        $chunk = $this->modx->getObject('modChunk', array('name' => $containerTpl));
+        $this->config['containerTpl'] = (empty($chunk)) ? 'searchresults' : $containerTpl;
 
         // &tpl [ chunk name | 'AdvSearchResult' ]
         $tpl = $this->modx->getOption('tpl', $this->config, 'AdvSearchResult');
-        $chunk = $this->parseTpl($tpl);
-        $this->config['tpl'] = (empty($chunk)) ? 'AdvSearchResult' : $tpl;
+        $chunk = $this->modx->getObject('modChunk', array('name' => $tpl));
+        $this->config['tpl'] = (empty($chunk)) ? 'searchresult' : $tpl;
 
         // &showExtract [ string | '1:content' ]
         $showExtractArray = explode(':', $this->modx->getOption('showExtract', $this->config, '1:content'));
@@ -466,7 +489,7 @@ class AdvSearch extends AdvSearchUtil {
             // check that all the fields selected for extract exists in mainFields, tvFields or joinedFields
             $extractFields = explode(',', $showExtractArray[1]);
             foreach ($extractFields as $key => $field) {
-                if (!in_array($field, $displayedFields)) {
+                if (!in_array($field, $this->displayedFields)) {
                     unset($extractFields[$key]);
                 }
             }
@@ -488,8 +511,8 @@ class AdvSearch extends AdvSearchUtil {
 
             // &extractTpl [ chunk name | 'Extract' ]
             $extractTpl = $this->modx->getOption('extractTpl', $this->config, 'Extract');
-            $chunk = $this->parseTpl($extractTpl);
-            $this->config['extractTpl'] = (empty($chunk)) ? 'Extract' : $extractTpl;
+            $chunk = $this->modx->getObject('modChunk', array('name' => $extractTpl));
+            $this->config['extractTpl'] = (empty($chunk)) ? 'extract' : $extractTpl;
 
             // &highlightResults [ 0 | 1 ]
             $highlightResults = (int) $this->modx->getOption('highlightResults', $this->config, 1);
@@ -504,33 +527,63 @@ class AdvSearch extends AdvSearchUtil {
             }
         }
 
-        // &pagingType[ 0 | 1 | 2 ]
+        // &pagingType[ 0 | 1 | 2 | 3 ]
         $pagingType = (int) $this->modx->getOption('pagingType', $this->config, 1);
-        $this->config['pagingType'] = (($pagingType <= 2) && ($pagingType >= 0)) ? $pagingType : 1;
+        $this->config['pagingType'] = (($pagingType <= 3) && ($pagingType >= 0)) ? $pagingType : 1;
 
         if ($this->config['pagingType'] == 1) {
             // &paging1Tpl [ chunk name | 'Paging1' ]
             $paging1Tpl = $this->modx->getOption('paging1Tpl', $this->config, 'Paging1');
-            $chunk = $this->parseTpl($paging1Tpl);
-            $this->config['paging1Tpl'] = (empty($chunk)) ? 'Paging1' : $paging1Tpl;
+            $chunk = $this->modx->getObject('modChunk', array('name' => $paging1Tpl));
+            $this->config['paging1Tpl'] = (empty($chunk)) ? 'paging1' : $paging1Tpl;
         } elseif ($this->config['pagingType'] == 2) {
             // &paging2Tpl [ chunk name | 'Paging2' ]
             $paging2Tpl = $this->modx->getOption('paging2Tpl', $this->config, 'Paging2');
-            $chunk = $this->parseTpl($paging2Tpl);
-            $this->config['paging2Tpl'] = (empty($chunk)) ? 'Paging2' : $paging2Tpl;
+            $chunk = $this->modx->getObject('modChunk', array('name' => $paging2Tpl));
+            $this->config['paging2Tpl'] = (empty($chunk)) ? 'paging2' : $paging2Tpl;
 
             // &currentPageTpl [ chunk name | 'CurrentPageLink' ]
             $currentPageTpl = $this->modx->getOption('currentPageTpl', $this->config, 'CurrentPageLink');
-            $chunk = $this->parseTpl($currentPageTpl);
-            $this->config['currentPageTpl'] = (empty($chunk)) ? 'CurrentPageLink' : $currentPageTpl;
+            $chunk = $this->modx->getObject('modChunk', array('name' => $currentPageTpl));
+            $this->config['currentPageTpl'] = (empty($chunk)) ? 'currentpagelink' : $currentPageTpl;
 
             // &pageTpl [ chunk name | 'PageLink' ]
             $pageTpl = $this->modx->getOption('pageTpl', $this->config, 'PageLink');
-            $chunk = $this->parseTpl($pageTpl);
-            $this->config['pageTpl'] = (empty($chunk)) ? 'PageLink' : $pageTpl;
+            $chunk = $this->modx->getObject('modChunk', array('name' => $pageTpl));
+            $this->config['pageTpl'] = (empty($chunk)) ? 'pagelink' : $pageTpl;
 
             // &pagingSeparator
             $this->config['pagingSeparator'] = $this->modx->getOption('pagingSeparator', $this->config, ' | ');
+        } elseif ($this->config['pagingType'] == 3) {
+            // &paging3Tpl [ chunk name | 'Paging3' ]
+            $paging3Tpl = $this->modx->getOption('paging3Tpl', $this->config, 'Paging3');
+            $chunk = $this->modx->getObject('modChunk', array('name' => $paging3Tpl));
+            $this->config['paging3Tpl'] = (empty($chunk)) ? 'paging3' : $paging3Tpl;
+
+            // &currentPageTpl [ chunk name | 'CurrentPageLink' ]
+            $currentPageTpl = $this->modx->getOption('paging3CurrentPageTpl', $this->config, 'CurrentPageLink');
+            $chunk = $this->modx->getObject('modChunk', array('name' => $currentPageTpl));
+            $this->config['paging3CurrentPageTpl'] = (empty($chunk)) ? 'currentpagelink' : $currentPageTpl;
+
+            // &pageTpl [ chunk name | 'PageLink' ]
+            $pageTpl = $this->modx->getOption('page3PageLinkTpl', $this->config, 'PageLink');
+            $chunk = $this->modx->getObject('modChunk', array('name' => $pageTpl));
+            $this->config['page3PageLinkTpl'] = (empty($chunk)) ? 'pagelink' : $pageTpl;
+
+            // &pagingSeparator
+            $this->config['paging3Separator'] = $this->modx->getOption('paging3Separator', $this->config, ' | ');
+
+            // &pagingOuterRange
+            $this->config['paging3OuterRange'] = $this->modx->getOption('paging3OuterRange', $this->config, 2);
+
+            // &pagingMiddleRange
+            $this->config['paging3MiddleRange'] = $this->modx->getOption('paging3MiddleRange', $this->config, 3);
+
+            // &pagingRangeSplitter
+
+            $paging3RangeSplitter = $this->modx->getOption('paging3RangeSplitterTpl', $this->config, 'Paging3RangeSplitter');
+            $chunk = $this->modx->getObject('modChunk', array('name' => $paging3RangeSplitter));
+            $this->config['paging3RangeSplitterTpl'] = (empty($chunk)) ? 'paging3rangesplitter' : $paging3RangeSplitter;
         }
 
         if ($this->config['withAjax']) {
@@ -541,8 +594,8 @@ class AdvSearch extends AdvSearchUtil {
             if ($this->config['moreResults']) {
                 // &moreResultsTpl [ chunk name | 'MoreResults' ]
                 $moreResultsTpl = $this->modx->getOption('moreResultsTpl', $this->config, 'MoreResults');
-                $chunk = $this->parseTpl($moreResultsTpl);
-                $this->config['moreResultsTpl'] = (empty($chunk)) ? 'MoreResults' : $moreResultsTpl;
+                $chunk = $this->modx->getObject('modChunk', array('name' => $moreResultsTpl));
+                $this->config['moreResultsTpl'] = (empty($chunk)) ? 'moreresults' : $moreResultsTpl;
             }
         }
 
@@ -587,86 +640,168 @@ class AdvSearch extends AdvSearchUtil {
     }
 
     /*
-     * Returns paging (type 0 or 1)
+     * Format pagination
      *
      * @access private
-     * @param string $searchString The search string
      * @param integer $resultsCount The number of results found
-     * @param integer $offset The offset of the result page
      * @param integer $pageResultsCount The number of results for the current page
      * @return string Returns search results output header info
      */
 
-    private function _getPaging($searchString, $resultsCount, $offset, $pageResultsCount) {
-        $output = '';
-        if ($this->config['perPage'] && $this->config['pagingType']) {
-            $id = $this->modx->resource->get('id');
-            $idParameters = $this->modx->request->getParameters();
-
-            // first: number of the first result of the current page, last: number of the last result of current page,
-            // page: number of the current page, nbpages: total number of pages
-            $currentPage = ceil($offset / $this->config['perPage']) + 1;
-            $nbPages = ceil($resultsCount / $this->config['perPage']);
-            $pagePh = array(
-                'first' => $offset + 1,
-                'last' => $offset + $pageResultsCount,
-                'total' => $resultsCount,
-                'currentpage' => $currentPage,
-                'nbpages' => $nbPages
-            );
-            $this->modx->setPlaceholders($pagePh, $this->config['placeholderPrefix']);
-
-            $qParameters = array();
-            if (!empty($this->queryHook['requests'])) {
-                $qParameters = $this->queryHook['requests'];
-            }
-
-            if ($this->config['pagingType'] == 1) {
-                // pagination type 1
-                $pagePh = array();
-                $nextOffset = $offset + $this->config['perPage'];
-                if ($nextOffset < $resultsCount) {
-                    $parameters = array_merge($idParameters, $qParameters, array(
-                        $this->config['offsetIndex'] => $nextOffset
-                    ));
-                    $pagePh['nextlink'] = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
-                }
-
-                $previousOffset = $offset - $this->config['perPage'];
-                if ($previousOffset >= 0) {
-                    $parameters = array_merge($idParameters, $qParameters, array(
-                        $this->config['offsetIndex'] => $previousOffset
-                    ));
-                    $pagePh['previouslink'] = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
-                }
-
-                $output = $this->processElementTags($this->parseTpl($this->config['paging1Tpl'], $pagePh));
-            } elseif ($this->config['pagingType'] == 2) {
-                // pagination type 2
-                $paging2 = '';
-                for ($i = 0; $i < $nbPages; ++$i) {
-                    $pagePh = array();
-                    $pagePh['text'] = $i + 1;
-                    $pagePh['separator'] = $this->config['pagingSeparator'];
-                    $pagePh['offset'] = $i * $this->config['perPage'];
-                    if ($currentPage == $i + 1) {
-                        $pagePh['link'] = $i + 1;
-                        $paging2 .= $this->processElementTags($this->parseTpl($this->config['currentPageTpl'], $pagePh));
-                    } else {
-                        $parameters = array_merge($idParameters, $qParameters, array(
-                            $this->config['offsetIndex'] => $pagePh['offset']
-                        ));
-                        $pagePh['link'] = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
-                        $paging2 .= $this->processElementTags($this->parseTpl($this->config['pageTpl'], $pagePh));
-                    }
-                    if ($i < $nbPages) {
-                        $paging2 .= $this->config['pagingSeparator'];
-                    }
-                }
-                $paging2 = trim($paging2, $this->config['pagingSeparator']);
-                $output = $this->processElementTags($this->parseTpl($this->config['paging2Tpl'], array('paging2' => $paging2)));
-            }
+    private function _getPaging($searchString, $resultsCount, $_offset, $pageResultsCount) {
+        if (!$this->config['perPage'] || !$this->config['pagingType']) {
+            return;
         }
+        $id = $this->modx->resource->get('id');
+        $idParameters = $this->modx->request->getParameters();
+        $this->page = intval($this->page);
+
+        // first: number of the first result of the current page, last: number of the last result of current page,
+        // page: number of the current page, nbpages: total number of pages
+        $nbPages = (int) ceil($resultsCount / $this->config['perPage']);
+        $flatCount = $this->page * $this->config['perPage'];
+        $last = $flatCount <= $resultsCount ? $flatCount : $resultsCount;
+        $pagePh = array(
+            'first' => ($this->page - 1) * $this->config['perPage'] + 1,
+            'last' => $last,
+            'total' => $resultsCount,
+            'currentpage' => $this->page,
+            'nbpages' => $nbPages
+        );
+        $this->modx->setPlaceholders($pagePh, $this->config['placeholderPrefix']);
+
+        $qParameters = array();
+        if (!empty($this->queryHook['requests'])) {
+            $qParameters = $this->queryHook['requests'];
+        }
+
+        if ($this->config['pagingType'] == 1) {
+            // pagination type 1
+            $pagePh = array();
+
+            $previousCount = ($this->page - 1) * $this->config['perPage'];
+            $pagePh['previouslink'] = '';
+            if ($previousCount > 0) {
+                $parameters = array_merge($idParameters, $qParameters, array(
+                    $this->config['pageIndex'] => $this->page - 1
+                ));
+                $pagePh['previouslink'] = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
+            }
+
+            $nextPage = ($this->page + 1);
+            $pagePh['nextlink'] = '';
+            if ($nextPage <= $nbPages) {
+                $parameters = array_merge($idParameters, $qParameters, array(
+                    $this->config['pageIndex'] => $this->page + 1
+                ));
+                $pagePh['nextlink'] = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
+            }
+
+            $output = $this->processElementTags($this->parseTpl($this->config['paging1Tpl'], $pagePh));
+        } elseif ($this->config['pagingType'] == 2) {
+            // pagination type 2
+            $paging2 = array();
+            for ($i = 0; $i < $nbPages; ++$i) {
+                $pagePh = array();
+                $pagePh['text'] = $i + 1;
+                $pagePh['separator'] = $this->config['pagingSeparator'];
+                $pagePh['page'] = $i + 1;
+                if ($this->page == $i + 1) {
+                    $pagePh['link'] = $i + 1;
+                    $paging2[] = $this->processElementTags($this->parseTpl($this->config['currentPageTpl'], $pagePh));
+                } else {
+                    $parameters = array_merge($idParameters, $qParameters, array(
+                        $this->config['pageIndex'] => $pagePh['page']
+                    ));
+                    $pagePh['link'] = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
+                    $paging2[] = $this->processElementTags($this->parseTpl($this->config['pageTpl'], $pagePh));
+                }
+            }
+            $paging2 = @implode($this->config['pagingSeparator'], $paging2);
+            $output = $this->processElementTags($this->parseTpl($this->config['paging2Tpl'], array('paging2' => $paging2)));
+        } elseif ($this->config['pagingType'] == 3) {
+            // pagination type 3
+            $paging3 = array();
+
+            $previousCount = ($this->page - 1) * $this->config['perPage'];
+            $previouslink = '';
+            if ($previousCount > 0) {
+                $parameters = array_merge($idParameters, $qParameters, array(
+                    $this->config['pageIndex'] => $this->page - 1
+                ));
+                $previouslink = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
+            }
+
+            $nextPage = ($this->page + 1);
+            $nextlink = '';
+            if ($nextPage <= $nbPages) {
+                $parameters = array_merge($idParameters, $qParameters, array(
+                    $this->config['pageIndex'] => $this->page + 1
+                ));
+                $nextlink = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
+            }
+
+            $maxOuterRange = $this->config['paging3OuterRange'] + $this->config['paging3MiddleRange'];
+            $middleWingRange = (int) ceil(($this->config['paging3MiddleRange'] - 1) / 2);
+            $middleWingRange = $middleWingRange > 0 ? $middleWingRange : 1;
+
+            for ($i = 1; $i <= $nbPages; ++$i) {
+                $parameters = array_merge($idParameters, $qParameters);
+
+                if ($i <= $this->config['paging3OuterRange'] ||
+                        $i > ($nbPages - $this->config['paging3OuterRange'])
+                ) {
+                    $paging3[] = $this->_formatPaging3($i, $id, $parameters);
+                } else {
+                    if ($nbPages <= ($this->config['paging3OuterRange'] * 2)) {
+                        continue;
+                    }
+                    // left splitter
+                    if ($i === ($this->config['paging3OuterRange'] + 1) &&
+                            $this->page >= $maxOuterRange) {
+                        $paging3[] = $this->processElementTags($this->parseTpl($this->config['paging3RangeSplitterTpl']));
+                    }
+
+                    if ($i <= ($this->page + $middleWingRange) &&
+                            $i >= ($this->page - $middleWingRange)) {
+                        $paging3[] = $this->_formatPaging3($i, $id, $parameters);
+                    }
+
+                    // right splitter
+                    if ($i === ($nbPages - $this->config['paging3OuterRange']) &&
+                            $this->page <= ($nbPages - $maxOuterRange) + 1) {
+                        $paging3[] = $this->processElementTags($this->parseTpl($this->config['paging3RangeSplitterTpl']));
+                    }
+                }
+            } // for ($i = 1; $i <= $nbPages; ++$i)
+
+            $paging3 = @implode($this->config['paging3Separator'], $paging3);
+            $output = $this->processElementTags($this->parseTpl($this->config['paging3Tpl'], array(
+                        'previouslink' => $previouslink,
+                        'paging3' => $paging3,
+                        'nextlink' => $nextlink,
+            )));
+        }
+        return $output;
+    }
+
+    private function _formatPaging3($idx, $docId, $parameters = array()) {
+        $pagePh = array();
+        $pagePh['text'] = $idx;
+        $pagePh['separator'] = $this->config['paging3Separator'];
+        $pagePh['page'] = $idx;
+
+        if ($this->page == $idx) {
+            $pagePh['link'] = $idx;
+            $output = $this->processElementTags($this->parseTpl($this->config['currentPageTpl'], $pagePh));
+        } else {
+            $parameters = array_merge($parameters, array(
+                $this->config['pageIndex'] => $idx
+            ));
+            $pagePh['link'] = $this->modx->makeUrl($docId, '', $parameters, $this->config['urlScheme']);
+            $output = $this->processElementTags($this->parseTpl($this->config['page3PageLinkTpl'], $pagePh));
+        }
+
         return $output;
     }
 

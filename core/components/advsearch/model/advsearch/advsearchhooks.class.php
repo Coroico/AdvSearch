@@ -5,6 +5,7 @@
  *
  * @package 	AdvSearch
  * @author		Coroico
+ *              goldsky - goldsky@virtudraft.com
  * @copyright 	Copyright (c) 2012 by Coroico <coroico@wangba.fr>
  *
  * @tutorial	Class to handle hooks for AdvSearch classes
@@ -125,6 +126,7 @@ class AdvSearchHooks {
             $this->errors[$hook] .= ' ' . $success;
             $success = false;
         }
+
         return $success;
     }
 
@@ -277,6 +279,7 @@ class AdvSearchHooks {
                     $condition = "({$classField} {$oper} {$val})";
             }
         }
+
         return $condition;
     }
 
@@ -378,6 +381,7 @@ class AdvSearchHooks {
 
     public function setQueryHook(array $qhDeclaration = array()) {
         $requests = null;
+
         if (!empty($qhDeclaration)) {
 
             // queryHook version
@@ -399,6 +403,8 @@ class AdvSearchHooks {
                 if (!empty($val)) {
                     $this->queryHook['perPage'] = $val;
                     $requests[$tag] = $val;
+                } else {
+                    $this->queryHook['perPage'] = $tag;
                 }
             }
 
@@ -426,6 +432,8 @@ class AdvSearchHooks {
             // sortby
             if (!empty($qhDeclaration['sortby'])) {
                 $tag = $qhDeclaration['sortby'];
+                $this->queryHook['sortby'] = $tag;
+
                 if (is_array($_REQUEST[$tag])) {
                     // multiple list
                     $values = $_REQUEST[$tag];
@@ -458,6 +466,7 @@ class AdvSearchHooks {
                 $this->queryHook['requests'] = $requests;
             }
         }
+
         return $this->queryHook;
     }
 

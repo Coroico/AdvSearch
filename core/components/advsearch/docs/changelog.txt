@@ -2,6 +2,10 @@ Changelog for AdvSearch
 
 AdvSearch dev
 -------------------
+- add controllers for the search engines
+- add new interface to build Zend's search indexes
+- add new pagination type
+- add GMap integration
 - debug form's definition on JS's pagination
 - change set_time_limit to 1000, infinite limit kills.
 - dump the debug output to MODX's error log if it's an ajax call
