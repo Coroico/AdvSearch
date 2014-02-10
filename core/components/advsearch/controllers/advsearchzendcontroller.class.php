@@ -10,10 +10,6 @@ class AdvSearchZendController extends AdvSearchEngineController {
         ;
     }
 
-    public function getResultsCount() {
-        ;
-    }
-
     private function _setCondition($term, $sign) {
         $isLikeCondition = (($sign) || is_null($sign));
         if ($isLikeCondition) {

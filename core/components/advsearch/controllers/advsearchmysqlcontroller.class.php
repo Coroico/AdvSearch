@@ -236,10 +236,6 @@ class AdvSearchMysqlController extends AdvSearchEngineController {
         return $this->results;
     }
 
-    public function getResultsCount() {
-        return $this->resultsCount;
-    }
-
     private function _countStmt(xPDOQuery $c, $asContext){
         return count($this->results);
     }

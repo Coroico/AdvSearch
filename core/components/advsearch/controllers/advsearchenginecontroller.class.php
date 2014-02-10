@@ -44,9 +44,18 @@ abstract class AdvSearchEngineController extends AdvSearchUtil {
     }
 
     abstract function getResults($asContext);
-    abstract function getResultsCount();
-    abstract function getSearchString($searchString);
-    abstract function getSearchTerms();
+    
+    public function getResultsCount() {
+        return $this->resultsCount;
+    }
+
+    public function getSearchString() {
+        return $this->searchString;
+    }
+
+    public function getSearchTerms() {
+        return $this->searchTerms;
+    }
 
     public function getPage(){
         return $this->page;

@@ -4,7 +4,7 @@ if (!class_exists('AdvSearchEngineController')) {
     include_once dirname(__FILE__) . '/advsearchenginecontroller.class.php';
 }
 
-class AdvSearchAllEnginesController extends AdvSearchEngineController {
+class AdvSearchSolrController extends AdvSearchEngineController {
 
     public function getResults($asContext) {
         ;
@@ -12,4 +12,4 @@ class AdvSearchAllEnginesController extends AdvSearchEngineController {
 
 }
 
-return 'AdvSearchAllEnginesController';
+return 'AdvSearchSolrController';

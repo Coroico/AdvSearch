@@ -10,10 +10,6 @@ class AdvSearchCustomController extends AdvSearchEngineController {
         ;
     }
 
-    public function getResultsCount() {
-        ;
-    }
-
 }
 
 return 'AdvSearchCustomController';
