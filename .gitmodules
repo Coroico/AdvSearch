@@ -1,0 +1,3 @@
+[submodule "core/components/advsearch/vendors/solarium"]
+	path = core/components/advsearch/vendors/solarium
+	url = https://github.com/basdenooijer/solarium
