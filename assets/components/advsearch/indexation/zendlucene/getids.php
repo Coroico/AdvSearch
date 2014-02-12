@@ -5,7 +5,7 @@ ini_set('max_execution_time', 300);
 error_reporting(-1);
 
 define('MODX_API_MODE', true);
-include ('../../../../index.php');
+include ('../../../../../index.php');
 
 if (!isset($_GET['siteId']) || $_GET['siteId'] !== $modx->site_id) {
     $output = json_encode(array(
