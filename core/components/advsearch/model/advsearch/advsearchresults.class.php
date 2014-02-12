@@ -176,9 +176,20 @@ class AdvSearchResults extends AdvSearchUtil {
         $lstContexts = $this->modx->getOption('contexts', $this->config, $this->modx->context->get('key'));
         $this->config['contexts'] = implode(',', array_map('trim', explode(',', $lstContexts)));
 
+        /**
+         * @deprecated
+         */
         // &docindexPath [ path | 'assets/files/docindex/' ]
         $path = $this->modx->getOption('docindexPath', $this->config, 'docindex/');
         $this->config['docindexPath'] = $this->modx->getOption('assets_path') . 'files/' . $path;
+
+        /**
+         * &docindexRoot [ path | '[[++core_path]]docindex/' ]
+         * eg: will be appended by engine's name
+         *     [[++core_path]]docindex/zend/ for zend engine
+         *     [[++core_path]]docindex/solr/ for solr engine
+         */
+        $this->config['docindexRoot'] = $this->modx->getOption('docindexRoot', $this->config, '[[++core_path]]docindex/');
 
         // &engine [ 'mysql' | 'zend' | 'all' ] - name of search engine to use
         $engine = strtolower(trim($this->modx->getOption('engine', $this->config, 'mysql')));

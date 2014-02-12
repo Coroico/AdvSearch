@@ -151,7 +151,13 @@ if (!class_exists('AdvSearchIndex')) {
 }
 
 // create an index folder
-$indexPath = MODX_ASSETS_PATH . 'files/docindex';
+// @deprecated
+//$indexPath = MODX_ASSETS_PATH . 'files/docindex';
+/**
+ * @todo make a system setting for this
+ */
+$indexPath = MODX_CORE_PATH . 'docindex/zend';
+
 if (file_exists($indexPath))
     $index = Zend_Search_Lucene::open($indexPath);
 else
