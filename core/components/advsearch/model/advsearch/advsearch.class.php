@@ -105,14 +105,18 @@ class AdvSearch extends AdvSearchUtil {
             $this->page = 1;
         }
 
+        $queryHook = $this->getHooks('queryHook');
         $asContext = array(
             'searchString' => $this->searchString,
             'searchQuery' => $this->searchQuery,
             'searchTerms' => $this->searchTerms,
             'offset' => $this->offset,
             'page' => $this->page,
-            'queryHook' => $this->getHooks('queryHook')
+            'queryHook' => $queryHook
         );
+        if (isset($queryHook['perPage']) && !empty($queryHook['perPage'])) {
+            $this->config['perPage'] = $queryHook['perPage'];
+        }
 
         $defaultAdvSearchCorePath = $this->modx->getOption('core_path') . 'components/advsearch/';
         $advSearchCorePath = $this->modx->getOption('advsearch.core_path', null, $defaultAdvSearchCorePath);
@@ -390,13 +394,13 @@ class AdvSearch extends AdvSearchUtil {
         }
 
         // results header
-        $infoOutput = $this->_getResultInfo($this->searchString, $resultsCount);
+        $infoOutput = $this->_getResultInfo($resultsCount);
 
         // pagination
-        $pagingOutput = $this->_getPaging($this->searchString, $resultsCount, $this->offset, $pageResultsCount);
+        $pagingOutput = $this->_getPaging($resultsCount);
 
         // moreResults link
-        $moreLinkOutput = $this->_getMoreLink($this->searchString, $resultsCount, $this->offset, $pageResultsCount);
+        $moreLinkOutput = $this->_getMoreLink();
 
         // results
         $resultsOutput = '';
@@ -613,9 +617,9 @@ class AdvSearch extends AdvSearchUtil {
      * @return string Returns search results output header info
      */
 
-    private function _getResultInfo($searchString, $resultsCount) {
+    private function _getResultInfo($resultsCount) {
         $output = '';
-        if (!empty($searchString)) {
+        if (!empty($this->searchString)) {
             if ($resultsCount > 1) {
                 $lexicon = 'advsearch.results_text_found_plural';
             } else {
@@ -623,7 +627,7 @@ class AdvSearch extends AdvSearchUtil {
             }
             $output = $this->modx->lexicon($lexicon, array(
                 'count' => $resultsCount,
-                'text' => !empty($this->config['highlightResults']) ? $this->_addHighlighting($searchString, $this->searchTerms, $this->config['highlightClass'], $this->config['highlightTag']) : $searchString
+                'text' => !empty($this->config['highlightResults']) ? $this->_addHighlighting($this->searchString, $this->searchTerms, $this->config['highlightClass'], $this->config['highlightTag']) : $searchString
             ));
         } else {
             if ($resultsCount > 1) {
@@ -648,7 +652,7 @@ class AdvSearch extends AdvSearchUtil {
      * @return string Returns search results output header info
      */
 
-    private function _getPaging($searchString, $resultsCount, $_offset, $pageResultsCount) {
+    private function _getPaging($resultsCount) {
         if (!$this->config['perPage'] || !$this->config['pagingType']) {
             return;
         }
@@ -668,6 +672,7 @@ class AdvSearch extends AdvSearchUtil {
             'currentpage' => $this->page,
             'nbpages' => $nbPages
         );
+
         $this->modx->setPlaceholders($pagePh, $this->config['placeholderPrefix']);
 
         $qParameters = array();
@@ -816,7 +821,7 @@ class AdvSearch extends AdvSearchUtil {
      * @return string Returns "More results" link
      */
 
-    private function _getMoreLink($searchString, $resultsCount, $offset, $pageResultsCount) {
+    private function _getMoreLink() {
         $output = '';
         if ($this->config['moreResults']) {
             $idParameters = $this->modx->request->getParameters();

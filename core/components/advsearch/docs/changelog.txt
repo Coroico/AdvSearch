@@ -2,8 +2,10 @@ Changelog for AdvSearch
 
 AdvSearch dev
 -------------------
+- fix paging getting value from queryHook
 - devide docindex's path by separate engines
 - add controllers for the search engines
+- add new interface to build Solr's search indexes
 - add new interface to build Zend's search indexes
 - add new pagination type
 - add GMap integration
