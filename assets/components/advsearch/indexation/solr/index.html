@@ -36,54 +36,106 @@
                         </div>
                         <form role="form" onsubmit="return false;" id="getIds">
                             <div class="form-group">
-                                <label for="ids" class="col-sm-2 control-label">IDs</label>
-                                <div class="col-sm-10">
-                                    <input type="text" class="form-control" placeholder="Enter ID parameters" name="ids" id="ids">
+                                <label for="ids" class="col-sm-3 control-label">IDs</label>
+                                <div class="col-sm-9">
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        placeholder="Enter ID parameters of GetIds snippet"
+                                        name="ids"
+                                        id="ids"
+                                        required="required">
                                 </div>
-                                &nbsp;<br/>
-                                <label for="site_id" class="col-sm-2 control-label">Site's ID</label>
-                                <div class="col-sm-10">
-                                    <input type="text" class="form-control" placeholder="Enter site's ID" name="site_id" id="site_id">
+                            </div>
+                            <div class="form-group">
+                                <label for="site_id" class="col-sm-3 control-label">Site's ID</label>
+                                <div class="col-sm-9">
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        placeholder="Enter site's ID"
+                                        name="site_id"
+                                        id="site_id"
+                                        required="required">
                                 </div>
-                                &nbsp;<br/>
-                                <label for="config_file" class="col-sm-2 control-label">Absolute path of Config file</label>
-                                <div class="col-sm-10">
-                                    <input type="text" class="form-control" placeholder="[[++core_path]]components/advsearch/configs/advsearchsolrconfig.php" name="config_file" id="config_file">
+                            </div>
+                            <div class="form-group">
+                                <label for="config_file" class="col-sm-3 control-label">Absolute path of Config file</label>
+                                <div class="col-sm-9">
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        placeholder="[[++core_path]]components/advsearch/configs/advsearchsolrconfig.php"
+                                        name="config_file"
+                                        id="config_file"
+                                        required="required">
+                                    <small>Default is "[[++core_path]]components/advsearch/configs/advsearchsolrconfig.php"</small>
                                 </div>
-                                &nbsp;<br/>
-                                <label for="include_tvs" class="col-sm-2 control-label">Include Template Variables</label>
-                                <div class="col-sm-10 checkbox">
-                                    <input type="checkbox" name="include_tvs" id="include_tvs">
+                            </div>
+                            <div class="form-group">
+                                <label for="include_tvs" class="col-sm-3 control-label">Include Template Variables</label>
+                                <div class="col-sm-9 checkbox">
+                                    <input
+                                        type="checkbox"
+                                        name="include_tvs"
+                                        id="include_tvs"
+                                        value="1"
+                                        checked="checked">
                                 </div>
-                                &nbsp;<br/>
-                                <label for="process_tvs" class="col-sm-2 control-label">Process Template Variables</label>
-                                <div class="col-sm-10 checkbox">
-                                    <input type="checkbox" name="process_tvs" id="process_tvs">
+                            </div>
+                            <div class="form-group">
+                                <label for="process_tvs" class="col-sm-3 control-label">Process Template Variables</label>
+                                <div class="col-sm-9 checkbox">
+                                    <input
+                                        type="checkbox"
+                                        name="process_tvs"
+                                        id="process_tvs"
+                                        value="1"
+                                        checked="checked">
                                 </div>
-                                &nbsp;<br/>
-
-                                <div class="col-sm-10 col-sm-offset-2">
-                                    <button type="submit" class="btn btn-danger" onclick="submitForm();">Submit</button>
+                            </div>
+                            <div class="form-group">
+                                <label for="limit" class="col-sm-3 control-label">Limit number of documents</label>
+                                <div class="col-sm-9">
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        placeholder="Make a test, put a small number, eg: 2. Leave this empty for no limit."
+                                        name="limit"
+                                        id="limit">
+                                </div>
+                            </div>
+                            <p>&nbsp;</p>
+                            <div class="form-group">
+                                <div class="col-sm-9 col-sm-offset-3">
+                                    <button
+                                        type="submit"
+                                        id="submit-btn"
+                                        class="btn btn-danger"
+                                        onclick="submitForm();">
+                                        Submit
+                                    </button>
                                 </div>
                             </div>
                         </form>
                         &nbsp;<br/>
-                        <div class="col-sm-10 col-sm-offset-2" id="errorLog" style="display: none;">
+                        <div class="row" style="display: none;">
+                            <div class="col-sm-9 col-sm-offset-3 text-danger" id="errorLog"></div>
+                        </div>
+                        <div class="row" style="display: none;">
+                            <div class="col-sm-9 col-sm-offset-3" id="imageLoader">
+                                <img src="ajax-loader.gif" alt="" class="img-responsive"/>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <label for="output" class="col-sm-3 control-label">Total</label>
+                            <div class="col-sm-9" id="total"></div>
                         </div>
                         &nbsp;<br/>
-                        <div class="form-group">
-                            <label for="output" class="col-sm-2 control-label">Total</label>
-                            <div class="col-sm-10" id="total"></div>
-                        </div>
-                        &nbsp;<br/>
-                        <div class="progress progress-striped col-sm-10 col-sm-offset-2">
-                            <div id="totalProgress" class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="0" style="width: 0%"></div>
-                        </div>
-                        &nbsp;<br/>
-                        <div class="form-group">
-                            <label for="output" class="col-sm-2 control-label">Output</label>
-                            <div class="col-sm-10">
-                                <textarea id="output" class="form-control disabled" rows="10" disabled="disabled"></textarea>
+                        <div class="row">
+                            <label for="output" class="col-sm-3 control-label">Output</label>
+                            <div class="col-sm-9">
+                                <div id="output"></div>
                             </div>
                         </div>
                     </div>
