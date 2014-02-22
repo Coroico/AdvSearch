@@ -138,7 +138,10 @@ foreach ($resources as $resource) {
         if ($k === 'createdon' ||
                 $k === 'editedon' ||
                 $k === 'deletedon' ||
-                $k === 'publishedon') {
+                $k === 'publishedon' ||
+                $k === 'pub_date' ||
+                $k === 'unpub_date'
+                ) {
             if ($v == 0) {
                 $v = '0000-00-00T00:00:00Z';
             } else {
