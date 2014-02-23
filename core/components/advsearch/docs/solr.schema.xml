@@ -135,34 +135,31 @@
           Some fields are multiValued only because Tika currently may return
           multiple values for them.
         -->
-        <field name="pagetitle" type="text_general" indexed="false" stored="true" />
+        <field name="pagetitle" type="text_general" indexed="true" stored="true" />
         <copyField source="pagetitle" dest="text"/>
         <copyField source="pagetitle" dest="text_rev"/>
 
-        <field name="longtitle" type="text_general" indexed="false" stored="true" />
+        <field name="longtitle" type="text_general" indexed="true" stored="true" />
         <copyField source="longtitle" dest="text"/>
         <copyField source="longtitle" dest="text_rev"/>
 
-        <field name="description" type="text_general" indexed="false" stored="true" />
+        <field name="description" type="text_general" indexed="true" stored="true" />
         <copyField source="description" dest="text"/>
         <copyField source="description" dest="text_rev"/>
 
-        <field name="alias" type="text_general" indexed="false" stored="true" />
-        <copyField source="alias" dest="text"/>
-        <copyField source="alias" dest="text_rev"/>
-
-        <field name="link_attributes" type="text_general" indexed="false" stored="true" />
+        <field name="alias" type="text_general" indexed="false" stored="false" />
+        <field name="link_attributes" type="text_general" indexed="false" stored="false" />
         <field name="published" type="boolean" indexed="true" stored="true" />
         <field name="pub_date" type="date" indexed="true" stored="true" />
         <field name="unpub_date" type="date" indexed="true" stored="true" />
         <field name="parent" type="int" indexed="true" stored="true" />
         <field name="isfolder" type="boolean" indexed="true" stored="true" />
 
-        <field name="introtext" type="text_general" indexed="false" stored="true" />
+        <field name="introtext" type="text_general" indexed="true" stored="true" />
         <copyField source="introtext" dest="text"/>
         <copyField source="introtext" dest="text_rev"/>
 
-        <field name="content" type="text_general" indexed="false" stored="true" />
+        <field name="content" type="text_general" indexed="true" stored="true" />
         <copyField source="content" dest="text"/>
         <copyField source="content" dest="text_rev"/>
 
@@ -205,6 +202,10 @@
         <!-- Template Variables -->
         <dynamicField name="*" type="text_general" indexed="true" stored="true" />
         <dynamicField name="custom*" type="text_general" indexed="true" stored="true" />
+
+        <!-- to manipulate sorting on indexed="false" or multivalued="true" -->
+        <field name="*_sort" type="string" indexed="true" stored="false"/>
+        <copyField source="*" dest="*_sort" />
 
     </fields>
 
@@ -911,22 +912,22 @@
 
                  Punctuation characters are discarded by default.  Use discardPunctuation="false" to keep them.
 
-                    See http://wiki.apache.org/solr/JapaneseLanguageSupport for more on Japanese language support.
-                 -->
-                 <tokenizer class="solr.JapaneseTokenizerFactory" mode="search"/>
-                 <!--<tokenizer class="solr.JapaneseTokenizerFactory" mode="search" userDictionary="lang/userdict_ja.txt"/>-->
-                 <!-- Reduces inflected verbs and adjectives to their base/dictionary forms (辞書形) -->
-                 <filter class="solr.JapaneseBaseFormFilterFactory"/>
-                 <!-- Removes tokens with certain part-of-speech tags -->
-                 <filter class="solr.JapanesePartOfSpeechStopFilterFactory" tags="lang/stoptags_ja.txt" />
-                 <!-- Normalizes full-width romaji to half-width and half-width kana to full-width (Unicode NFKC subset) -->
-                 <filter class="solr.CJKWidthFilterFactory"/>
-                 <!-- Removes common tokens typically not useful for search, but have a negative effect on ranking -->
-                 <filter class="solr.StopFilterFactory" ignoreCase="true" words="lang/stopwords_ja.txt" />
-                 <!-- Normalizes common katakana spelling variations by removing any last long sound character (U+30FC) -->
-                 <filter class="solr.JapaneseKatakanaStemFilterFactory" minimumLength="4"/>
-                 <!-- Lower-cases romaji characters -->
-                 <filter class="solr.LowerCaseFilterFactory"/>
+                 See http://wiki.apache.org/solr/JapaneseLanguageSupport for more on Japanese language support.
+                -->
+                <tokenizer class="solr.JapaneseTokenizerFactory" mode="search"/>
+                <!--<tokenizer class="solr.JapaneseTokenizerFactory" mode="search" userDictionary="lang/userdict_ja.txt"/>-->
+                <!-- Reduces inflected verbs and adjectives to their base/dictionary forms (辞書形) -->
+                <filter class="solr.JapaneseBaseFormFilterFactory"/>
+                <!-- Removes tokens with certain part-of-speech tags -->
+                <filter class="solr.JapanesePartOfSpeechStopFilterFactory" tags="lang/stoptags_ja.txt" />
+                <!-- Normalizes full-width romaji to half-width and half-width kana to full-width (Unicode NFKC subset) -->
+                <filter class="solr.CJKWidthFilterFactory"/>
+                <!-- Removes common tokens typically not useful for search, but have a negative effect on ranking -->
+                <filter class="solr.StopFilterFactory" ignoreCase="true" words="lang/stopwords_ja.txt" />
+                <!-- Normalizes common katakana spelling variations by removing any last long sound character (U+30FC) -->
+                <filter class="solr.JapaneseKatakanaStemFilterFactory" minimumLength="4"/>
+                <!-- Lower-cases romaji characters -->
+                <filter class="solr.LowerCaseFilterFactory"/>
             </analyzer>
         </fieldType>
 
