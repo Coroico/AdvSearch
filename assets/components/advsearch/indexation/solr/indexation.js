@@ -60,7 +60,7 @@ function submitForm() {
             consoleDom.parent().show();
         } else if (data.success === true) {
             totalDom.text(data.total);
-            outputDom.text(data.message);
+            outputDom.html(data.message);
         }
         submitBtn.prop('disabled', false);
         imageLoader.parent().hide();

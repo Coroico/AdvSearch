@@ -132,6 +132,11 @@ foreach ($resources as $resource) {
         }
     }
 
+    // revert back the properties field into json form.
+    if (isset($resourceArray['properties']) && !empty($resourceArray['properties'])) {
+        $resourceArray['properties'] = json_encode($resourceArray['properties']);
+    }
+
     // create a new document for the data
     $doc = $update->createDocument();
     foreach ($resourceArray as $k => $v) {
@@ -177,7 +182,7 @@ try {
 
 $output = json_encode(array(
     'success' => true,
-    'message' => 'Update query executed' . "\r\n" . 'Query time: ' . $result->getQueryTime() . ' milliseconds',
+    'message' => 'Update query executed<br>Query time: ' . $result->getQueryTime() . ' milliseconds',
     'total' => $total,
     'object' => ''
         ));
