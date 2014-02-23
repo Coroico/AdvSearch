@@ -177,7 +177,7 @@ try {
 
 $output = json_encode(array(
     'success' => true,
-    'message' => 'Update query executed' . "\r\n" . 'Query time: ' . $result->getQueryTime(),
+    'message' => 'Update query executed' . "\r\n" . 'Query time: ' . $result->getQueryTime() . ' milliseconds',
     'total' => $total,
     'object' => ''
         ));
