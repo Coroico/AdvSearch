@@ -203,9 +203,12 @@
         <dynamicField name="*" type="text_general" indexed="true" stored="true" />
         <dynamicField name="custom*" type="text_general" indexed="true" stored="true" />
 
-        <!-- to manipulate sorting on indexed="false" or multivalued="true" -->
-        <field name="*_sort" type="string" indexed="true" stored="false"/>
-        <copyField source="*" dest="*_sort" />
+        <!-- to manipulate:
+        * sorting on indexed="false" or multivalued="true"
+        * regex
+        -->
+        <dynamicField name="*_s"  type="string"  indexed="true"  stored="false" />
+        <copyField source="*" dest="*_s" />
 
     </fields>
 
