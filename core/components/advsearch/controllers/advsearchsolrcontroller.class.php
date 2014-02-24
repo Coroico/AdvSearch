@@ -38,12 +38,20 @@ class AdvSearchSolrController extends AdvSearchEngineController {
         $fields = array_merge($asContext['mainFields'], $asContext['tvFields']);
         $this->query->setFields($fields);
         $queriesString = '';
-        if (!empty($asContext['joinedWhereFields']) && !empty($asContext['searchString'])) {
+        if (!empty($asContext['joinedWhereFields'])) {
             $queries = array();
-            $queries[] = 'text:' . $asContext['searchString'] . '*';      // copyField on solr's schema.xml
-            $queries[] = 'text_rev:' . $asContext['searchString'] . '*';  // copyField on solr's schema.xml
-            foreach ($asContext['joinedWhereFields'] as $v) {
-                $queries[] = $v . ':' . $asContext['searchString'] . '*'; // add * for LIKE query
+            if (!empty($asContext['searchString'])) {
+                $queries[] = 'text:' . $asContext['searchString'] . '*';      // copyField on solr's schema.xml
+                $queries[] = 'text_rev:' . $asContext['searchString'] . '*';  // copyField on solr's schema.xml
+                foreach ($asContext['joinedWhereFields'] as $v) {
+                    $queries[] = $v . ':' . $asContext['searchString'] . '*'; // add * for LIKE query
+                }
+            } else {
+                $queries[] = 'text:*';      // copyField on solr's schema.xml
+                $queries[] = 'text_rev:*';  // copyField on solr's schema.xml
+                foreach ($asContext['joinedWhereFields'] as $v) {
+                    $queries[] = $v . ':*'; // add * for LIKE query
+                }
             }
             $queriesString = '(' . @implode(' OR ', $queries) . ')';
         }
