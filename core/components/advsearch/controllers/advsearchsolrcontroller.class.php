@@ -37,6 +37,7 @@ class AdvSearchSolrController extends AdvSearchEngineController {
         $this->query = $this->client->createSelect();
         $fields = array_merge($asContext['mainFields'], $asContext['tvFields']);
         $this->query->setFields($fields);
+        $queriesString = '';
         if (!empty($asContext['joinedWhereFields']) && !empty($asContext['searchString'])) {
             $queries = array();
             $queries[] = 'text:' . $asContext['searchString'] . '*';      // copyField on solr's schema.xml
@@ -44,8 +45,7 @@ class AdvSearchSolrController extends AdvSearchEngineController {
             foreach ($asContext['joinedWhereFields'] as $v) {
                 $queries[] = $v . ':' . $asContext['searchString'] . '*'; // add * for LIKE query
             }
-            $queriesString = @implode(' ', $queries);
-            $this->query->setQuery($queriesString);
+            $queriesString = '(' . @implode(' OR ', $queries) . ')';
         }
 
         if (isset($asContext['queryHook']) &&
@@ -56,12 +56,16 @@ class AdvSearchSolrController extends AdvSearchEngineController {
             $conditions = $this->processHookConditions($asContext);
 
             if (!empty($conditions)) {
-                $conditionsString = @implode(' ', $conditions);
-                $this->query->setQuery($conditionsString);
+                $conditionsString = @implode(' AND ', $conditions);
+                if (!empty($queriesString)) {
+                    $queriesString .= ' AND (' . $conditionsString . ')';
+                } else {
+                    $queriesString = $conditionsString;
+                }
             }
-
         }
 
+        $this->query->setQuery($queriesString);
         $this->query->setStart(($asContext['page'] - 1) * $this->config['perPage'])->setRows($this->config['perPage']);
         if (!empty($asContext['sortby'])) {
             foreach ($asContext['sortby'] as $classField => $dir) {
@@ -73,7 +77,7 @@ class AdvSearchSolrController extends AdvSearchEngineController {
                 } else {
                     $field = rtrim($classFieldX[0], '_cv'); // Template Variable
                 }
-                $sortField = $field . '_sort'; // to manipulate sorting on indexed="false" or multivalued="true"
+                $sortField = $field . '_s'; // to manipulate sorting on indexed="false" or multivalued="true"
                 $this->query->addSort($sortField, $dir);
             }
         }
@@ -183,46 +187,18 @@ class AdvSearchSolrController extends AdvSearchEngineController {
         $condition = '';
         if ($queryHook['version'] == '1.3') {
             switch ($oper) {
-                case 'IN':
-                case 'NOT IN':  // operator with a list of values wrapped by parenthesis
-                    $lstval = explode(',', $val);
-                    $arrayVal = array();
-                    foreach ($lstval as $v) {
-                        if (is_numeric($val)) {
-                            $arrayVal[] = $v;
-                        } else {
-                            $v = addslashes($v);
-                            $arrayVal[] = "'" . $v . "'";
-                        }
-                    }
-                    $val = implode(',', $arrayVal);
-                    $condition = "({$field} {$oper}({$val}))";
-                    break;
-                case 'FIND':
-                    $val = addslashes($val);
-                    if (empty($ptrn)) {
-                        $condition = "(FIND_IN_SET( {$val}, {$field} ))"; // csv list by default
-                    } else {
-                        $condition = "(FIND_IN_SET( '{$val}', REPLACE( {$field}, '{$ptrn}', ',' ) ))";
-                    }
-                    break;
-                    /* @since 1.3 */
-                case 'MATCH':  // operator with exact matching between word1||word2||word3
-                    $val = addslashes($val);
-                    $condition = "({$field} REGEXP '{$val}' )";
-                    break;
                     /* @since 1.3 */
                 case 'REGEXP': // operator with exact pattern matching. eg: ptrn= '%s[0-9]*'
                     $val = addslashes($val);
                     $ptrn = str_replace('%s', $val, $ptrn);
-                    // http://lucene.apache.org/core/4_4_0/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#Escaping_Special_Characters
-                    $helper = $this->query->getHelper();
-                    $condition = "$field:/*{$helper->escapeTerm($ptrn)}*/";
+                    $condition = "{$field}_s:/.*{$ptrn}.*/"; // run regex on "string" fieldtype of field's clone instead
                     break;
-                default:    // >,<,>=,<=,LIKE  (unary operator)
+                case 'QUERY':
+                default:
                     $val = addslashes($val);
-                    $val = (!is_numeric($val)) ? "'{$val}'" : $val;
-                    $condition = "({$field} {$oper} {$val})";
+                    $ptrn = str_replace('%s', $val, $ptrn);
+                    $condition = "{$field}_s:{$ptrn}";
+                    break;
             }
         }
 
