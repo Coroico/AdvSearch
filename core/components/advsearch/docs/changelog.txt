@@ -2,6 +2,7 @@ Changelog for AdvSearch
 
 AdvSearch dev
 -------------------
+- add plugin to index/remove resource from solr's index
 - fix example of solr's schema
 - fix paging getting value from queryHook
 - devide docindex's path by separate engines
