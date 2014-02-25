@@ -127,6 +127,14 @@ jQuery(function($) {
     };
 
     $.fn.advSearchInit = function(as) {
+        as.ss = $('#' + as.asid + '_' + 'advsea-submit');  // advsearch submit button if it exists
+        if (as.ss) {
+            as.ss.unbind();  // detach existing function
+        }
+        as.cl = $(as.aci);  // advsearch close button if it exists
+        if (as.cl) {
+            as.cl.unbind();  // detach existing function
+        }
         activateAsInstance(as);
         return this;
     };
@@ -246,13 +254,13 @@ jQuery(function($) {
         if (!as.ls) {
             // with non livesearch adds the doSearch function to the submit button
             as.ss.click(function() {
-                doSearch(as);
-                return false;
+                return doSearch(as);
+//                return false;
             });
         } else {
             // with the livesearch mode, adds the doLiveSearch function. Launched after each typed character.
             as.si.keyup(function() {
-                doLiveSearch(as);
+                return doLiveSearch(as);
             });
         }
 
@@ -261,8 +269,8 @@ jQuery(function($) {
             as.si.keydown(function(e) {
                 var keyCode = e.keyCode || e.which;
                 if (keyCode === 13) {
-                    doSearch(as);
                     e.preventDefault();
+                    return doSearch(as);
                 }
             });
         }
@@ -272,7 +280,7 @@ jQuery(function($) {
             return false;
         }
 
-        doSearch(as); // display results
+        return doSearch(as); // display results
     }
 
     $.fn.serializeObject = function() {
@@ -329,7 +337,7 @@ jQuery(function($) {
             window.clearTimeout(as.lt);
         }
         as.lt = window.setTimeout(function() {
-            doSearch(as);
+            return doSearch(as);
         }, 400);
     }
 
@@ -394,11 +402,20 @@ jQuery(function($) {
         // form content as serialized object
         var formDom = $('#' + p + 'advsea-form');
         var formVals = formDom.serializeObject();
-console.log('formVals', formVals);
+
+        /**
+         * Override form values if this is initiated from URI
+         *
+         * @param mixed as.hst  history is enabled
+         * @param bool  as.hstx browser event is initiated
+         * @param boold as.nav  pagination link is initiated
+         */
         if (as.hst && !as.hstx && !as.nav) {
-            uriQuery[as.sx] = formVals[as.sx];
-            formVals = $.extend({}, uriQuery, formVals);
-console.log('formVals', formVals);
+            if (searchTracker.length === 0) {
+                $.extend(formVals, uriQuery)
+            } else {
+                formVals = $.extend({}, uriQuery, formVals);
+            }
         }
 
         as.fm = JSON.stringify(formVals);
@@ -410,9 +427,7 @@ console.log('formVals', formVals);
         as.ld.show(); // show the load button
         as.rw.css('opacity', as.opc / 2);
 
-console.log('pars', pars);
         return $.getJSON(as.arh, pars, function(data) {
-console.log('data', data);
             if (data) {
                 var ids = '';
                 if (data.ids) {
@@ -458,7 +473,6 @@ console.log('data', data);
             as.is = false; // new search allowed
             if (as.hst) {
                 blockHistoryEvent = true;
-console.log('pars', pars);
                 setHistory(as, pars);
             }
 
@@ -556,14 +570,14 @@ console.log('pars', pars);
         as.pag = as.pag - 0 + dir; // typecasting
         blockHistoryEvent = true;
         as.nav = 1;
-        doSearch(as);
+        return doSearch(as);
     }
 
     function pageLink(as, pag) { // add page link
         as.pag = pag - 0; // typecasting
         blockHistoryEvent = true;
         as.nav = 1;
-        doSearch(as);
+        return doSearch(as);
     }
 
 //============================================== history.js ==========================
@@ -577,7 +591,6 @@ console.log('pars', pars);
         var href = buildUrl(as, pars);
         if (href !== document.location.href) {
             History.pushState(pars, document.title, href);
-//            blockHistoryEvent = true;
         }
         return href;
     }
@@ -603,7 +616,6 @@ console.log('pars', pars);
     if (History && History.enabled) {
         History.Adapter.bind(window, 'statechange', function() {
             if (!blockHistoryEvent) {
-                console.log('blockHistoryEvent', blockHistoryEvent);
                 activateSearch({hstx: 1});
             } else {
                 // resetting value
