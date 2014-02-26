@@ -46,8 +46,22 @@ $lstIds = $modx->runSnippet('GetIds', array(
         ));
 $lstIds = @explode(',', $lstIds);
 
-include_once MODX_CORE_PATH . 'components/advsearch/vendors/solarium/vendor/autoload.php';
-require_once MODX_CORE_PATH . 'components/advsearch/vendors/solarium/library/Solarium/Autoloader.php';
+if (!file_exists(MODX_ASSETS_PATH . 'libraries/solarium/vendor/autoload.php')) {
+    $output = json_encode(array(
+        'success' => false,
+        'message' => 'Missing: ' . MODX_ASSETS_PATH . 'libraries/solarium/vendor/autoload.php'
+    ));
+    die($output);
+}
+require_once MODX_ASSETS_PATH . 'libraries/solarium/vendor/autoload.php';
+if (!file_exists(MODX_ASSETS_PATH . 'libraries/solarium/library/Solarium/Autoloader.php')) {
+    $output = json_encode(array(
+        'success' => false,
+        'message' => 'Missing: ' . MODX_ASSETS_PATH . 'libraries/solarium/library/Solarium/Autoloader.php'
+    ));
+    die($output);
+}
+require_once MODX_ASSETS_PATH . 'libraries/solarium/library/Solarium/Autoloader.php';
 
 if (!empty($_GET['config_file'])) {
     $maxIterations = (integer) $modx->getOption('parser_max_iterations', null, 10);

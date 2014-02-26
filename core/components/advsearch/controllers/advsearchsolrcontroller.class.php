@@ -6,8 +6,6 @@
  */
 
 include_once dirname(__FILE__) . '/advsearchenginecontroller.class.php';
-include_once dirname(dirname(__FILE__)) . '/vendors/solarium/vendor/autoload.php';
-include_once dirname(dirname(__FILE__)) . '/vendors/solarium/library/Solarium/Autoloader.php';
 
 class AdvSearchSolrController extends AdvSearchEngineController {
 
@@ -18,6 +16,9 @@ class AdvSearchSolrController extends AdvSearchEngineController {
 
     public function __construct(modX $modx, $config) {
         parent::__construct($modx, $config);
+
+        include_once $config['libraryPath'] . '/solarium/vendor/autoload.php';
+        include_once $config['libraryPath'] . '/solarium/library/Solarium/Autoloader.php';
 
         if (!isset($config['engineConfigFile']) || empty($config['engineConfigFile']) || !is_file($config['engineConfigFile'])) {
             $config['engineConfigFile'] = dirname(__FILE__) . '/configs/advsearchsolrconfig.php';
