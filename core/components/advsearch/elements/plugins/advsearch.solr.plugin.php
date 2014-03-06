@@ -1,4 +1,7 @@
 <?php
+
+ini_set('max_execution_time', 900);
+
 $as = $modx->getOption('asId', $scriptProperties, 'as0') ? $scriptProperties['asId'] : 'as0';
 $as = str_replace(' ', '', $as);
 
@@ -19,8 +22,18 @@ $modx->getParser()->processElementTags('', $engineConfigFile, true, true, '[[', 
 
 $engineConfig = include $engineConfigFile;
 
-include_once $advSearchCorePath . 'vendors/solarium/vendor/autoload.php';
-include_once $advSearchCorePath . 'vendors/solarium/library/Solarium/Autoloader.php';
+if (!file_exists(MODX_ASSETS_PATH . 'libraries/solarium/vendor/autoload.php')) {
+    $msg = 'Missing: ' . MODX_ASSETS_PATH . 'libraries/solarium/vendor/autoload.php';
+    $modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] ' . $msg);
+    return;
+}
+require_once MODX_ASSETS_PATH . 'libraries/solarium/vendor/autoload.php';
+if (!file_exists(MODX_ASSETS_PATH . 'libraries/solarium/library/Solarium/Autoloader.php')) {
+    $msg = 'Missing: ' . MODX_ASSETS_PATH . 'libraries/solarium/library/Solarium/Autoloader.php';
+    $modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] ' . $msg);
+    return;
+}
+require_once $$as->config['libraryPath'] . 'solarium/library/Solarium/Autoloader.php';
 
 try {
     \Solarium\Autoloader::register();

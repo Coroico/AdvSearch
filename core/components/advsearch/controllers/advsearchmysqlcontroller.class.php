@@ -4,7 +4,16 @@ include_once dirname(__FILE__) . '/advsearchenginecontroller.class.php';
 
 class AdvSearchMysqlController extends AdvSearchEngineController {
 
-    public function getResults($asContext, $fulltext = true) {
+    public function getResults($asContext) {
+        $results = $this->_getResults($asContext);
+        if (count($results) === 0) {
+            // disable fulltext
+            $results = $this->_getResults($asContext, false);
+        }
+        return $results;
+    }
+
+    private function _getResults($asContext, $fulltext = true) {
         $c = $this->modx->newQuery('modResource');
         //=============================  add selected modResource fields (docFields)
         $c->distinct();
@@ -163,11 +172,14 @@ class AdvSearchMysqlController extends AdvSearchEngineController {
         }
 
         //=============================  add an orderby clause for selected fields
-        if (!empty($asContext['sortbyField'])) {
-            foreach ($asContext['sortbyField'] as $field) {
-                $classfield = $asContext['sortbyClass']["{$field}"] . $this->modx->escape($field);
-                $dir = $asContext['sortbyDir']["{$field}"];
-                $c->sortby($classfield, $dir);
+        if (!empty($asContext['sortby'])) {
+            foreach ($asContext['sortby'] as $field => $dir) {
+                $classFieldX = array_map('trim', explode('.', $field));
+                foreach ($classFieldX as $k => $v) {
+                    $classFieldX[$k] = $this->modx->escape($v);
+                }
+                $field = @implode('.', $classFieldX);
+                $c->sortby($field, $dir);
             }
         }
 
@@ -186,15 +198,7 @@ class AdvSearchMysqlController extends AdvSearchEngineController {
             $this->ifDebug('Number of results before pagination ' . ($fulltext ? '(FULLTEXT) : ' : '(LIKE) : '). $this->resultsCount, __METHOD__, __FILE__, __LINE__);
 
             if ($this->resultsCount > 0) {
-                $minOffset = ($asContext['page'] - 2) * $this->config['perPage'];
-                if ($this->resultsCount < $minOffset) {
-                    $offset = 0;
-                    $asContext['page'] = 1;
-                    $this->setPage(1);
-                } else {
-                    $this->setPage($asContext['page']);
-                }
-
+                $this->setPage($asContext['page']);
                 $c->limit($this->config['perPage'], ($asContext['page'] - 1) * $this->config['perPage']);
 
                 // debug mysql query

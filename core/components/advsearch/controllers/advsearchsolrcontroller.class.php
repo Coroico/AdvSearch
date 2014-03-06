@@ -17,8 +17,8 @@ class AdvSearchSolrController extends AdvSearchEngineController {
     public function __construct(modX $modx, $config) {
         parent::__construct($modx, $config);
 
-        include_once $config['libraryPath'] . '/solarium/vendor/autoload.php';
-        include_once $config['libraryPath'] . '/solarium/library/Solarium/Autoloader.php';
+        include_once $config['libraryPath'] . 'solarium/vendor/autoload.php';
+        include_once $config['libraryPath'] . 'solarium/library/Solarium/Autoloader.php';
 
         if (!isset($config['engineConfigFile']) || empty($config['engineConfigFile']) || !is_file($config['engineConfigFile'])) {
             $config['engineConfigFile'] = dirname(__FILE__) . '/configs/advsearchsolrconfig.php';
@@ -42,17 +42,18 @@ class AdvSearchSolrController extends AdvSearchEngineController {
         if (!empty($asContext['joinedWhereFields'])) {
             $queries = array();
             if (!empty($asContext['searchString'])) {
-                $queries[] = 'text:' . $asContext['searchString'] . '*';      // copyField on solr's schema.xml
-                $queries[] = 'text_rev:' . $asContext['searchString'] . '*';  // copyField on solr's schema.xml
+                $queries[] = 'text:' . $asContext['searchString'];              // copyField on solr's schema.xml
+                $queries[] = 'text_rev:' . $asContext['searchString'];
                 foreach ($asContext['joinedWhereFields'] as $v) {
-                    $queries[] = $v . ':' . $asContext['searchString'] . '*'; // add * for LIKE query
+                    $queries[] = $v . ':' . $asContext['searchString'];
+                    $queries[] = $v . ':' . str_replace(' ', '* ', $asContext['searchString']) . '*';   // add * for LIKE query
+                    $queries[] = $v . ':*' . str_replace(' ', ' *', $asContext['searchString']);        // front wildcard
+                    $queries[] = $v . '_s:' . $asContext['searchString'];
+                    $queries[] = $v . '_s:' . str_replace(' ', '* ', $asContext['searchString']) . '*';
+                    $queries[] = $v . '_s:*' . str_replace(' ', ' *', $asContext['searchString']);
                 }
             } else {
-                $queries[] = 'text:*';      // copyField on solr's schema.xml
-                $queries[] = 'text_rev:*';  // copyField on solr's schema.xml
-                foreach ($asContext['joinedWhereFields'] as $v) {
-                    $queries[] = $v . ':*'; // add * for LIKE query
-                }
+                $queries[] = '*:*';
             }
             $queriesString = '(' . @implode(' OR ', $queries) . ')';
         }
@@ -96,7 +97,8 @@ class AdvSearchSolrController extends AdvSearchEngineController {
         } catch (Exception $e) {
             $this->modx->log(modX::LOG_LEVEL_ERROR, __FILE__ . ' ');
             $this->modx->log(modX::LOG_LEVEL_ERROR, __METHOD__ . ' ');
-            $this->modx->log(modX::LOG_LEVEL_ERROR, __LINE__ . ': error getting result ' . $e->getMessage());
+            $error = $e->getMessage();
+            $this->modx->log(modX::LOG_LEVEL_ERROR, __LINE__ . ': error getting result: ' . $error);
             return false;
         }
 
@@ -117,21 +119,8 @@ class AdvSearchSolrController extends AdvSearchEngineController {
         }
 
         $this->results = $results;
-
-        $countCheck = count($this->results);
-        if ($countCheck === 0) {
-            $this->resultsCount = 0;
-        }
-
-        $minOffset = ($asContext['page'] - 2) * $this->config['perPage'];
-        if ($this->resultsCount < $minOffset) {
-            $asContext['page'] = 1;
-            $this->setPage(1);
-        } else {
-            $this->setPage($asContext['page']);
-        }
-
-        return $this->results;
+        $this->setPage($asContext['page']);
+        return $results;
     }
 
     public function processHookConditions($asContext) {
@@ -197,6 +186,10 @@ class AdvSearchSolrController extends AdvSearchEngineController {
         if ($queryHook['version'] == '1.3') {
             switch ($oper) {
                     /* @since 1.3 */
+                case 'MATCH':
+                    $val = addslashes($val);
+                    $condition = "{$field}_s:/.*{$val}.*/"; // run regex on "string" fieldtype of field's clone instead
+                    break;
                 case 'REGEXP': // operator with exact pattern matching. eg: ptrn= '%s[0-9]*'
                     $val = addslashes($val);
                     $ptrn = str_replace('%s', $val, $ptrn);

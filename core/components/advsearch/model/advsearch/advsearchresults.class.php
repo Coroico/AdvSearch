@@ -26,12 +26,11 @@ class AdvSearchResults extends AdvSearchUtil {
     protected $page = 1;
     protected $queryHook = null;
     protected $ids = array();
-    protected $sortbyClass = array();
-    protected $sortbyField = array();
-    protected $sortbyDir = array();
+    protected $sortby = array();
     protected $mainWhereFields = array();
     protected $joinedWhereFields = array();
     protected $tvWhereFields = array();
+    protected $controller;
 
     public function __construct(modX & $modx, array & $config = array()) {
         parent::__construct($modx, $config);
@@ -51,15 +50,15 @@ class AdvSearchResults extends AdvSearchUtil {
 
         $this->_loadResultsProperties();
         $asContext['mainFields'] = $this->mainFields;
-        $asContext['joinedFields'] = $this->joinedFields;
-        $asContext['tvWhereFields'] = $this->tvWhereFields;
         $asContext['tvFields'] = $this->tvFields;
-        $asContext['sortbyClass'] = $this->sortbyClass;
-        $asContext['sortbyField'] = $this->sortbyField;
-        $asContext['sortbyDir'] = $this->sortbyDir;
+        $asContext['joinedFields'] = $this->joinedFields;
+        $asContext['mainWhereFields'] = $this->mainWhereFields;
+        $asContext['tvWhereFields'] = $this->tvWhereFields;
+        $asContext['joinedWhereFields'] = $this->joinedWhereFields;
+        $asContext['sortby'] = $this->sortby;
 
         $doQuery = TRUE;
-        if ($this->config['cacheQuery']) {
+        if ($this->config['cacheQuery'] && $this->config['cacheType'] !== 'html') {
             $key = serialize(array_merge($this->config, $asContext));
             $hash = md5($key);
             $cacheOptions = array(xPDO::OPT_CACHE_KEY => 'advsearch');
@@ -72,47 +71,66 @@ class AdvSearchResults extends AdvSearchUtil {
         }
 
         if ($doQuery) {
-            // get results
-            if ($this->mainClass == 'modResource') {
-                // default package (modResource + Tvs) and possibly joined packages
-                $engine = trim(strtolower($this->config['engine']));
-                switch ($engine) {
-                    case 'all':
-//                        $controller = $this->loadController('all');
-//                        $this->results = $controller->getResults($asContext);
-//
-//                        break;
-                    case 'zend':
-//                        $controller = $this->loadController('zend');
-//                        $this->results = $controller->getResults($asContext);
-//
-//                        break;
-                    case 'mysql':
-                    default:
-                        $controller = $this->loadController('mysql');
-                        break;
-                }
-            } else {
-                // search in a different main package and possibly joined packages
-                $controller = $this->loadController('custom');
-            }
-            if ($controller) {
-                $this->results = $controller->getResults($asContext);
-                if (count($this->results) === 0) {
-                    // disable fulltext
-                    $this->results = $controller->getResults($asContext, false);
-                }
-                $this->resultsCount = $controller->getResultsCount();
-                $this->page = $controller->getPage();
+            $engine = trim(strtolower($this->config['engine']));
+            if (empty($engine)) {
+                $msg = 'Engine was not defined';
+                $this->setError($msg);
+                $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] ' . $msg, '', __METHOD__, __FILE__, __LINE__);
+                return FALSE;
             }
 
-            if ($this->config['cacheQuery']) {
+            // get results
+            if (!$this->controller) {
+                if ($this->mainClass == 'modResource') {
+                    // default package (modResource + Tvs) and possibly joined packages
+                    try {
+                        $this->controller = $this->loadController($engine);
+                    } catch (Exception $ex) {
+                        $msg = 'Could not load controller for engine: ' . $engine . ' Exception: ' . $ex->getMessage();
+                        $this->setError($msg);
+                        $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] ' . $msg, '', __METHOD__, __FILE__, __LINE__);
+                        return FALSE;
+                    }
+                } else {
+                    // search in a different main package and possibly joined packages
+                    try {
+                        $this->controller = $this->loadController('custom');
+                    } catch (Exception $ex) {
+                        $msg = 'Could not load controller for engine: ' . $engine . ' Exception: ' . $ex->getMessage();
+                        $this->setError($msg);
+                        $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] ' . $msg, '', __METHOD__, __FILE__, __LINE__);
+                        return FALSE;
+                    }
+                }
+            }
+            if ($this->controller) {
+                $this->results = $this->controller->getResults($asContext);
+                $this->resultsCount = $this->controller->getResultsCount();
+                $this->page = $this->controller->getPage();
+            } else {
+                $msg = 'Controller could not generate the result';
+                $this->setError($msg);
+                $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] ' . $msg, '', __METHOD__, __FILE__, __LINE__);
+                return FALSE;
+            }
+
+            if ($this->config['cacheQuery'] && $this->config['cacheType'] !== 'html') {
                 $cache = array(
                     'results' => $this->results,
                     'resultsCount' => $this->resultsCount
                 );
                 $this->modx->cacheManager->set($hash, $cache, $this->config['cacheTime'], $cacheOptions);
             }
+        }
+
+        // reset pagination if the output empty while the counter shows more
+        if ($this->resultsCount > 0 && count($this->results) === 0) {
+            $asContext['page'] = 1;
+            return $this->doSearch($asContext);
+        }
+
+        if (empty($this->results)) {
+            $this->page = 1;
         }
 
         return $this->results;
@@ -191,9 +209,10 @@ class AdvSearchResults extends AdvSearchUtil {
          */
         $this->config['docindexRoot'] = $this->modx->getOption('docindexRoot', $this->config, '[[++core_path]]docindex/');
 
-        // &engine [ 'mysql' | 'zend' | 'all' ] - name of search engine to use
+        // &engine [ 'mysql' | 'zend' | 'solr' | 'all' | ... ] - name of search engine to use
         $engine = strtolower(trim($this->modx->getOption('engine', $this->config, 'mysql')));
-        $this->config['engine'] = in_array(strtolower($engine), array('all', 'zend', 'mysql')) ? strtolower($engine) : 'mysql';
+        $this->config['engine'] = !empty($engine) ? $engine : 'mysql';
+        $this->config['engineConfigFile'] = $this->modx->getOption('engineConfigFile', $this->config);
 
         // &fields [csv list of fields | 'pagetitle,longtitle,alias,description,introtext,content' (modResource)  '' otherwise ]
         $lstFields = $this->config['fields'];
@@ -269,6 +288,9 @@ class AdvSearchResults extends AdvSearchUtil {
             $this->tvFields = array_unique(array_merge($this->tvWhereFields, $this->tvFields));
         }
 
+        $this->joinedFields = array_merge($this->mainFields, $this->tvFields);
+        $this->joinedWhereFields = array_merge($this->mainWhereFields, $this->tvWhereFields);
+
         if (!empty($this->queryHook['main']['lstIds'])) {
             $lstIds = $this->queryHook['main']['lstIds'];
         } else {
@@ -298,29 +320,20 @@ class AdvSearchResults extends AdvSearchUtil {
         } else {
             // &sortby - comma separated list of couple "field [ASC|DESC]" to sort by.
             // field from joined resource should be named resourceName_fieldName. e.g: quipComment_body
-            $lstSortby = $this->modx->getOption('sortby', $this->config, 'createdon DESC');
+            $lstSortby = $this->modx->getOption('sortby', $this->config, 'id DESC');
         }
 
         if (!empty($lstSortby)) {
+            $this->sortby = array();
             $sortCpls = array_map('trim', explode(',', $lstSortby));
             $sorts = array();
-            $this->sortbyField = array();
-            $this->sortbyDir = array();
             foreach ($sortCpls as $sortCpl) {
                 $sortElts = array_map('trim', explode(' ', $sortCpl));
-                $dir = (empty($sortElts[1])) ? 'DESC' : $sortElts[1];
-                $dir = (($dir != 'DESC') && ($dir != 'ASC')) ? 'DESC' : $dir;
-                $classFieldElts = array_map('trim', explode('.', $sortElts[0]));
-                $class = (count($classFieldElts) == 2) ? $classFieldElts[0] : '';
-                $field = (count($classFieldElts) == 2) ? $classFieldElts[1] : $classFieldElts[0];
-                $this->sortbyField[] = $field;
-                $this->sortbyClass["{$field}"] = (!empty($class)) ? $this->modx->escape($class) . '.' : '';
-                $this->sortbyDir["{$field}"] = $dir;
-                $sorts[] = "{$field} {$dir}";
+                $classField = !empty($sortElts[0]) ? $sortElts[0] : 'modResource.id';
+                $dir = strtolower((empty($sortElts[1])) ? 'desc' : $sortElts[1]);
+                $dir = in_array($dir, array('asc', 'desc')) ? $dir : 'desc';
+                $this->sortby[$classField] = $dir;
             }
-            $this->config['sortby'] = implode(',', $sorts);
-        } else {
-            $this->config['sortby'] = $lstSortby;
         }
 
         $this->ifDebug('Config parameters after checking in class ' . __CLASS__ . ': ' . print_r($this->config, true), __METHOD__, __FILE__, __LINE__);

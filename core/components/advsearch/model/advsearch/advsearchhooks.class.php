@@ -427,6 +427,7 @@ class AdvSearchHooks {
                 if (!empty($andConditions)) {
                     $this->queryHook['andConditions'] = $andConditions;
                 }
+                $this->queryHook['andConditionsRaw'] = $qhDeclaration['andConditions'];
             }
 
             // sortby
