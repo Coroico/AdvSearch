@@ -720,7 +720,9 @@ class AdvSearch extends AdvSearchUtil {
             'last' => $last,
             'total' => $resultsCount,
             'currentpage' => $this->page,
-            'nbpages' => $nbPages
+            'page' => $this->page, // by convention
+            'nbpages' => $nbPages,
+            'totalPage' => $nbPages, // by convention
         );
 
         $this->modx->setPlaceholders($pagePh, $this->config['placeholderPrefix']);
