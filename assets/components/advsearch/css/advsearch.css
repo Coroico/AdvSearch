@@ -16,9 +16,9 @@ form.advsea-form  #as0_advsea-search{
 
 form.advsea-form a.advsea-helplink {
   padding: 0 20px 0 0;
-  background: url(images/help.png) 0 2px no-repeat; 
+  background: url(images/help.png) 0 2px no-repeat;
   font-size: 16px;
-  text-decoration: none;  
+  text-decoration: none;
   border: 0;
   cursor: pointer;
 }
@@ -104,3 +104,10 @@ div.advsea-result div.imgArticle{
 .advsea-highlight-4{color: #F48309}
 .advsea-highlight-5{color: #935A1D}
 .advsea-highlight-6{color: #628439}
+
+pre.advsea-code {
+    clear: both;
+    font-size: 12px;
+    max-height: 500px;
+    overflow:auto;
+}

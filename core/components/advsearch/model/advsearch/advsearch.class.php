@@ -24,6 +24,7 @@ class AdvSearch extends AdvSearchUtil {
     protected $extractFields = array();
     protected $nbExtracts;
     protected $asr = null;
+    protected $qtime = 0;
 
     public function __construct(modX & $modx, array $config = array()) {
 
@@ -38,8 +39,6 @@ class AdvSearch extends AdvSearchUtil {
      * @return string returns the search results
      */
     public function output() {
-        $output = '';
-
         if (!$this->forThisInstance()) {
             return FALSE;
         }
@@ -52,11 +51,23 @@ class AdvSearch extends AdvSearchUtil {
             return;
         }
 
+        // &toArray [ 0| 1 ]
+        $this->config['toArray'] = (bool)$this->modx->getOption('toArray', $this->config, 0);
+
         // &cacheQuery [ 0 | 1 ]
         $this->config['cacheQuery'] = (bool) $this->modx->getOption('cacheQuery', $this->config, 0);
 
         // &cacheTime [ 0 | 1 ]
         $this->config['cacheTime'] = (int) $this->modx->getOption('cacheTime', $this->config, 7200);
+
+        // &cacheType [ output | values ]
+        $cacheType = $this->modx->getOption('cacheType', $this->config);
+        if ($cacheType === 'html') {
+            $this->config['cacheType'] = 'html';
+        } else {
+            // default
+            $this->config['cacheType'] = 'array';
+        }
 
         // &maxWords [ 1 < int < 30 ]
         $maxWords = (int) $this->modx->getOption('maxWords', $this->config, 20);
@@ -106,6 +117,9 @@ class AdvSearch extends AdvSearchUtil {
         }
 
         $queryHook = $this->getHooks('queryHook');
+        if (isset($queryHook['perPage']) && !empty($queryHook['perPage'])) {
+            $this->config['perPage'] = $queryHook['perPage'];
+        }
         $asContext = array(
             'searchString' => $this->searchString,
             'searchQuery' => $this->searchQuery,
@@ -114,64 +128,86 @@ class AdvSearch extends AdvSearchUtil {
             'page' => $this->page,
             'queryHook' => $queryHook
         );
-        if (isset($queryHook['perPage']) && !empty($queryHook['perPage'])) {
-            $this->config['perPage'] = $queryHook['perPage'];
-        }
 
-        $defaultAdvSearchCorePath = $this->modx->getOption('core_path') . 'components/advsearch/';
-        $advSearchCorePath = $this->modx->getOption('advsearch.core_path', null, $defaultAdvSearchCorePath);
-        $this->searchResults = $this->modx->getService('advsearchresults', 'AdvSearchResults', $advSearchCorePath . 'model/advsearch/', $this->config);
-        if (!($this->searchResults instanceof AdvSearchResults)) {
-            $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] Could not load AdvSearchResults class.');
-            return false;
-        }
-        $this->searchResults->doSearch($asContext);
-        // searchResults resets "page" to 1 if the offset beyond the limit
-        $this->page = $this->searchResults->getPage();
-        $this->getHooks('postHook');
-
-        // display results
-        $typout = explode(',', $this->config['output']);
-        $out = array();
-        foreach ($typout as $to) {
-            if ($to == 'html') {
-                if ($this->searchResults->resultsCount) {
-                    $out[$to] = $this->renderOutput($this->searchResults);
-                } else {
-                    $out[$to] = $this->modx->lexicon('advsearch.no_results');
-                }
-            } elseif ($to == 'ids') {
-                $out[$to] = json_encode($this->searchResults->idResults);
-            } elseif ($to == 'json') {
-                $out[$to] = json_encode($this->searchResults->results);
+        /**
+         * Start the searching from here
+         */
+        $doQuery = true;
+        if ($this->config['cacheQuery'] && $this->config['cacheType'] === 'html') {
+            $key = serialize(array_merge($this->config, $asContext));
+            $hash = md5($key);
+            $cacheOptions = array(xPDO::OPT_CACHE_KEY => 'advsearch');
+            $foundCached = $this->modx->cacheManager->get($hash, $cacheOptions);
+            if ($foundCached) {
+                $doQuery = FALSE;
+                $output = $foundCached['results'];
             }
         }
+        if ($doQuery) {
+            $defaultAdvSearchCorePath = $this->modx->getOption('core_path') . 'components/advsearch/';
+            $advSearchCorePath = $this->modx->getOption('advsearch.core_path', null, $defaultAdvSearchCorePath);
+            $this->searchResults = $this->modx->getService('advsearchresults', 'AdvSearchResults', $advSearchCorePath . 'model/advsearch/', $this->config);
+            if (!($this->searchResults instanceof AdvSearchResults)) {
+                $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] Could not load AdvSearchResults class.');
+                return false;
+            }
+            $this->searchResults->doSearch($asContext);
+            $this->qtime = $this->getElapsedTime();
+            $this->modx->setPlaceholder('qtime', $this->qtime);
+            // searchResults resets "page" to 1 if the offset beyond the limit
+            $this->page = $this->searchResults->getPage();
+            $this->getHooks('postHook');
 
-        if ($this->config['withAjax']) {
-            $out['pag'] = $this->page;
-            $out['ppg'] = $this->config['perPage'];
-            $out['nbr'] = $this->searchResults->resultsCount;
-            $out['pgt'] = $this->config['pagingType'];
-            $out['opc'] = $this->config['opacity'];
-            $out['eff'] = $this->config['effect'];
-            $out['cdf'] = $this->config['clearDefault'];
+            // display results
+            $typout = explode(',', $this->config['output']);
+            $out = array();
+            foreach ($typout as $to) {
+                if ($to == 'html') {
+                    if ($this->searchResults->resultsCount) {
+                        $out[$to] = $this->renderOutput($this->searchResults);
+                    } else {
+                        $out[$to] = $this->modx->lexicon('advsearch.no_results');
+                    }
+                } elseif ($to == 'ids') {
+                    $out[$to] = json_encode($this->searchResults->idResults);
+                } elseif ($to == 'json') {
+                    $out[$to] = json_encode($this->searchResults->results);
+                }
+            }
 
-            $output = json_encode($out);
-        } else {
-            if (count($typout) > 1) {
+            if ($this->config['withAjax']) {
+                $out['pag'] = $this->page;
+                $out['ppg'] = $this->config['perPage'];
+                $out['nbr'] = $this->searchResults->resultsCount;
+                $out['pgt'] = $this->config['pagingType'];
+                $out['opc'] = $this->config['opacity'];
+                $out['eff'] = $this->config['effect'];
+                $out['cdf'] = $this->config['clearDefault'];
+
                 $output = json_encode($out);
             } else {
-                $output = $out[$typout[0]];
+                if (count($typout) > 1) {
+                    $output = json_encode($out);
+                } else {
+                    $output = $out[$typout[0]];
+                }
             }
-        }
 
-        if (!empty($this->config['toPlaceholder'])) {
-            $this->modx->setPlaceholder($this->config['toPlaceholder'], $output);
-            $output = '';
+            if ($this->config['cacheQuery'] && $this->config['cacheType'] === 'html') {
+                $cache = array(
+                    'results' => $output,
+                );
+                $this->modx->cacheManager->set($hash, $cache, $this->config['cacheTime'], $cacheOptions);
+            }
         }
 
         // log elapsed time
         $this->ifDebug('Elapsed time: ' . $this->getElapsedTime(), __METHOD__, __FILE__, __LINE__);
+
+        if (!empty($this->config['toPlaceholder'])) {
+            $this->modx->setPlaceholder($this->config['toPlaceholder'], $output);
+            return;
+        }
 
         return $output;
     }
@@ -404,6 +440,7 @@ class AdvSearch extends AdvSearchUtil {
 
         // results
         $resultsOutput = '';
+        $resultsArray = array();
         $idx = ($this->page - 1) * $this->config['perPage'] + 1;
         foreach ($results as $result) {
             if ($this->nbExtracts && count($this->extractFields)) {
@@ -427,8 +464,11 @@ class AdvSearch extends AdvSearchUtil {
                     $result['link'] = $this->modx->makeUrl($result[$asr->primaryKey], $ctx, '', $this->config['urlScheme']);
                 }
             }
-
-            $resultsOutput .= $this->processElementTags($this->parseTpl($this->config['tpl'], $result));
+            if ($this->config['toArray']) {
+                $resultsArray[] = $result;
+            } else {
+                $resultsOutput .= $this->processElementTags($this->parseTpl($this->config['tpl'], $result));
+            }
             $idx++;
         }
 
@@ -437,7 +477,7 @@ class AdvSearch extends AdvSearchUtil {
         $placeholders = array(
             'query' => $this->searchString,
             'total' => $resultsCount,
-            'etime' => $this->getElapsedTime()
+            'etime' => $this->getElapsedTime(),
         );
 
         $this->modx->setPlaceholders($placeholders, $this->config['placeholderPrefix']);
@@ -446,10 +486,20 @@ class AdvSearch extends AdvSearchUtil {
             'resultInfo' => $infoOutput,
             'paging' => $pagingOutput,
             'pagingType' => $this->config['pagingType'],
-            'results' => $resultsOutput,
             'moreResults' => $moreLinkOutput
         );
-        $output = $this->processElementTags($this->parseTpl($this->config['containerTpl'], $resultsPh));
+        if ($this->config['toArray']) {
+            $resultsPh = array_merge($placeholders, array(
+                'qtime' => $this->qtime,
+            ),$resultsPh, array(
+                'properties' => $this->config,
+                'results' => $resultsArray,
+            ));
+            $output = '<pre class="advsea-code">' . print_r($resultsPh, 1) . '</pre>';
+        } else {
+            $resultsPh['results'] = $resultsOutput;
+            $output = $this->processElementTags($this->parseTpl($this->config['containerTpl'], $resultsPh));
+        }
 
         return $output;
     }

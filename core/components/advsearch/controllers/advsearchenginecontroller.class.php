@@ -44,7 +44,7 @@ abstract class AdvSearchEngineController extends AdvSearchUtil {
     }
 
     abstract function getResults($asContext);
-    
+
     public function getResultsCount() {
         return $this->resultsCount;
     }
