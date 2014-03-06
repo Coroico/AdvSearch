@@ -201,15 +201,17 @@ class AdvSearchForm extends AdvSearchUtil {
             // include the advsearch js file in the header
             if ($this->config['addJs'] == 1) {
                 $addJs = 'regClientStartupScript';
-            } else { // if ($this->config['addJs'] == 2)
+            } elseif ($this->config['addJs'] == 2) { // if ($this->config['addJs'] == 2)
                 $addJs = 'regClientScript';
             }
 
-            $this->modx->$addJs($this->config['jsSearch']);
-            $this->modx->$addJs($this->config['jsPopulateForm']);
-            if ($this->config['useHistory']) {
-                $this->modx->$addJs($this->config['jsURI']);
-                $this->modx->$addJs($this->config['jsHistory']);
+            if ($this->config['addJs'] != 0) {
+                $this->modx->$addJs($this->config['jsSearch']);
+                $this->modx->$addJs($this->config['jsPopulateForm']);
+                if ($this->config['useHistory']) {
+                    $this->modx->$addJs($this->config['jsURI']);
+                    $this->modx->$addJs($this->config['jsHistory']);
+                }
             }
 
             // add ajaxResultsId, liveSearch mode and some other parameters in js header
@@ -297,7 +299,7 @@ class AdvSearchForm extends AdvSearchUtil {
 EOD;
             if ($this->config['addJs'] == 1) {
                 $this->modx->regClientStartupScript($jsHeader);
-            } else {
+            } elseif ($this->config['addJs'] == 2)  {
                 $this->modx->regClientScript($jsHeader);
             }
         }
