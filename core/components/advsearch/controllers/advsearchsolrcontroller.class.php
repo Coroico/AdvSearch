@@ -41,6 +41,7 @@ class AdvSearchSolrController extends AdvSearchEngineController {
         $queriesString = '';
         if (!empty($asContext['joinedWhereFields'])) {
             $queries = array();
+
             if (!empty($asContext['searchString'])) {
                 $queries[] = 'text:' . $asContext['searchString'];              // copyField on solr's schema.xml
                 $queries[] = 'text_rev:' . $asContext['searchString'];
@@ -56,6 +57,28 @@ class AdvSearchSolrController extends AdvSearchEngineController {
                 $queries[] = '*:*';
             }
             $queriesString = '(' . @implode(' OR ', $queries) . ')';
+        }
+
+        // multiple parents support
+        if (!empty($this->config['parents'])) {
+            $queries = array();
+            $parentArray = array_map('trim', explode(',', $this->config['parents']));
+            foreach ($parentArray as $parent) {
+                $queries[] = 'parent:' . $parent;
+            }
+            $and = !empty($queriesString) ? ' AND ' : '';
+            $queriesString .= $and . '(' . @implode(' AND ', $queries) . ')';
+        }
+
+        // multiple ids support
+        if (!empty($this->config['ids'])) {
+            $queries = array();
+            $idsArray = array_map('trim', explode(',', $this->config['ids']));
+            foreach ($idsArray as $id) {
+                $queries[] = 'id:' . $id;
+            }
+            $and = !empty($queriesString) ? ' AND ' : '';
+            $queriesString .= $and . '(' . @implode(' AND ', $queries) . ')';
         }
 
         if (isset($asContext['queryHook']) &&
