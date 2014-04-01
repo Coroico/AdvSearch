@@ -113,6 +113,10 @@ class AdvSearchForm extends AdvSearchUtil {
         // &searchIndex - [ search | any string ]
         $this->config['searchIndex'] = trim($this->modx->getOption('searchIndex', $this->config, 'search'));
 
+        // &uncacheScripts - [ 1 | 0 ]
+        $uncacheScripts = (bool) (int) $this->modx->getOption('uncacheScripts', $this->config, 1);
+        $this->config['uncacheScripts'] = $uncacheScripts ? '?_=' . time() : '';
+
         // display search form
         $placeholders = array(
             'method' => $this->config['method'],
@@ -144,7 +148,7 @@ class AdvSearchForm extends AdvSearchUtil {
         // add the external css and js files
         // add advSearch css file
         if ($this->config['addCss'] == 1) {
-            $this->modx->regClientCss($this->config['assetsUrl'] . 'css/advsearch.css');
+            $this->modx->regClientCss($this->config['assetsUrl'] . 'css/advsearch.css' . $this->config['uncacheScripts']);
         }
 
         // &clearDefault - [ 1 | 0 ]
@@ -176,9 +180,9 @@ class AdvSearchForm extends AdvSearchUtil {
 
         // include or not the inputForm js script linked to the form
         if ($this->config['addJs'] == 1) {
-            $this->modx->regClientStartupScript($this->config['jsSearchForm']);
+            $this->modx->regClientStartupScript($this->config['jsSearchForm'] . $this->config['uncacheScripts']);
         } elseif ($this->config['addJs'] == 2) {
-            $this->modx->regClientScript($this->config['jsSearchForm']);
+            $this->modx->regClientScript($this->config['jsSearchForm'] . $this->config['uncacheScripts']);
         }
 
         if ($this->config['withAjax']) {
@@ -206,11 +210,11 @@ class AdvSearchForm extends AdvSearchUtil {
             }
 
             if ($this->config['addJs'] != 0) {
-                $this->modx->$addJs($this->config['jsSearch']);
-                $this->modx->$addJs($this->config['jsPopulateForm']);
+                $this->modx->$addJs($this->config['jsSearch'] . $this->config['uncacheScripts']);
                 if ($this->config['useHistory']) {
                     $this->modx->$addJs($this->config['jsURI']);
                     $this->modx->$addJs($this->config['jsHistory']);
+                    $this->modx->$addJs($this->config['jsPopulateForm']);
                 }
             }
 

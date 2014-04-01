@@ -23,7 +23,7 @@ class AdvSearchUtil {
     protected $searchQuery = null;
     protected $searchTerms = array();
     /**
-     * store the chunk's HTML to property so save memory of loop rendering
+     * store the chunk's HTML to property to save memory of loop rendering
      * @var array
      */
     protected $chunks = array();
@@ -121,7 +121,7 @@ class AdvSearchUtil {
 
         // &init  [ 'none' | 'all' ]
         $init = $this->modx->getOption('init', $this->config, 'none');
-        $this->config['init'] = (($init == 'all') || ($init == 'none')) ? $init : 'none';
+        $this->config['init'] = ($init === 'all') ? 'all' : 'none';
 
         // &libraryPath under assets [ path | 'libraries/' ]
         $path = $this->modx->getOption('libraryPath', $this->config, 'libraries/');
