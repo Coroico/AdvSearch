@@ -28,6 +28,7 @@ if (!file_exists(MODX_ASSETS_PATH . 'libraries/solarium/vendor/autoload.php')) {
     return;
 }
 require_once MODX_ASSETS_PATH . 'libraries/solarium/vendor/autoload.php';
+
 if (!file_exists(MODX_ASSETS_PATH . 'libraries/solarium/library/Solarium/Autoloader.php')) {
     $msg = 'Missing: ' . MODX_ASSETS_PATH . 'libraries/solarium/library/Solarium/Autoloader.php';
     $modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] ' . $msg);
@@ -40,7 +41,7 @@ try {
     $client = new Solarium\Client($engineConfig);
 } catch (Exception $e) {
     $msg = 'Error connecting to Solr server: ' . $e->getMessage();
-    $modx->log(xPDO::LOG_LEVEL_ERROR, $msg);
+    $modx->log(modX::LOG_LEVEL_ERROR, $msg);
     return;
 }
 // get an update query instance
@@ -58,31 +59,7 @@ $ids = @explode(',', $ids);
  * @author splittingred <splittingred@gmail.com>
  * @param modX $modx
  * @param array $children
- * @param id $parent
- * @return boolean
- */
-function AdvSearchGetChildrenIds(&$modx, &$children, $parent) {
-    $success = false;
-    $kids = $modx->getCollection('modResource', array(
-        'parent' => $parent,
-    ));
-    if (!empty($kids)) {
-        /** @var modResource $kids */
-        foreach ($kids as $kid) {
-            $children[] = $kid->get('id');
-            AdvSearchGetChildrenIds($modx, $children, $kid->get('id'));
-        }
-    }
-    return $success;
-}
-
-/**
- * helper method for missing params in events
- *
- * @author splittingred <splittingred@gmail.com>
- * @param modX $modx
- * @param array $children
- * @param id $parent
+ * @param int $parent
  * @return boolean
  */
 if (!function_exists('SimpleSearchGetChildren')) {
@@ -104,9 +81,21 @@ if (!function_exists('SimpleSearchGetChildren')) {
 
 }
 
-$children = array();
-foreach ($ids as $id) {
-    AdvSearchGetChildrenIds($modx, $children, $id);
+function isDescendant(modX $modx, $rootIds, $resourceId) {
+    if (empty($rootIds) || empty($resourceId)) {
+        return FALSE;
+    }
+    if (!is_array($rootIds)) {
+        $rootIds = array_map('trim', @explode(',', $rootIds));
+    }
+    if (in_array($resourceId, $rootIds)) {
+        return TRUE;
+    }
+    $parentId = $modx->getObject('modResource', $resourceId)->get('parent');
+    if (in_array($parentId, $rootIds)) {
+        return TRUE;
+    }
+    return isDescendant($rootIds, $parentId);
 }
 
 switch ($modx->event->name) {
@@ -114,8 +103,11 @@ switch ($modx->event->name) {
     case 'OnDocPublished':
     case 'OnDocUnpublished':
     case 'OnDocUnPublished':
-        $resourceArray = $scriptProperties['resource']->toArray();
-        if (!in_array($resourceArray['id'], $children)) {
+        if (empty($id) || !is_numeric($id)) {
+            return;
+        }
+        $resourceArray = $modx->getObject('modResource', $id)->toArray();
+        if (!isDescendant($modx, $ids, $resourceArray['id'])) {
             return FALSE;
         }
         if ($resourceArray['searchable'] == 0 ||
@@ -125,26 +117,18 @@ switch ($modx->event->name) {
             $action = 'delete';
         } else {
             $action = 'add';
-            foreach ($_POST as $k => $v) {
-                if (substr($k, 0, 2) == 'tv') {
-                    $id = str_replace('tv', '', $k);
-                    /** @var modTemplateVar $tv */
-                    $tv = $modx->getObject('modTemplateVar', $id);
-                    if ($tv) {
-                        $tvValue = $tv->renderOutput($resource->get('id'));
-                        if (is_array($tvValue)) {
-                            $tvValue = implode('||', $tvValue);
-                        }
-                        $resourceArray[$tv->get('name')] = $tvValue;
-                        $modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Indexing ' . $tv->get('name') . ': ' . $resourceArray[$tv->get('name')]);
-                    }
-                    unset($resourceArray[$k]);
+            $tvs = $scriptProperties['resource']->getTemplateVars();
+            foreach ($tvs as $tv) {
+                $tvValue = $tv->renderOutput($resource->get('id'));
+                if (is_array($tvValue)) {
+                    $tvValue = implode('||', $tvValue);
                 }
+                $resourceArray[$tv->get('name')] = $tvValue;
+                $modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Indexing ' . $tv->get('name') . ': ' . $resourceArray[$tv->get('name')]);
             }
         }
-        unset($resourceArray['ta'], $resourceArray['action'], $resourceArray['tiny_toggle'], $resourceArray['HTTP_MODAUTH'], $resourceArray['modx-ab-stay'], $resourceArray['resource_groups']);
         $resourcesToIndex[] = $resourceArray;
-
+        
         break;
     case 'OnResourceDuplicate':
         $action = 'add';
@@ -193,34 +177,38 @@ foreach ($resourcesToIndex as $resourceArray) {
     }
 
     // create a new document for the data
-    $doc = $update->createDocument();
+    if ($action == 'add') {
+        $doc = $update->createDocument();
+    }
     foreach ($resourceArray as $k => $v) {
         if ($action == 'delete') {
             $update->addDeleteById($resourceArray['id']);
             $update->addCommit();
-            continue;
-        }
-        if ($k === 'createdon' ||
-                $k === 'editedon' ||
-                $k === 'deletedon' ||
-                $k === 'publishedon' ||
-                $k === 'pub_date' ||
-                $k === 'unpub_date'
-        ) {
-            if ($v == 0) {
-                $v = '0000-00-00T00:00:00Z';
-            } else {
-                $matches = null;
-                preg_match('/(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)/', $v, $matches);
-                if (!empty($matches)) {
-                    $v = $matches[1] . '-' . $matches[2] . '-' . $matches[3] . 'T' . $matches[4] . ':' . $matches[5] . ':' . $matches[6] . 'Z';
+        } elseif ($action == 'add') {
+            if ($k === 'createdon' ||
+                    $k === 'editedon' ||
+                    $k === 'deletedon' ||
+                    $k === 'publishedon' ||
+                    $k === 'pub_date' ||
+                    $k === 'unpub_date'
+            ) {
+                if ($v == 0) {
+                    $v = '0000-00-00T00:00:00Z';
+                } else {
+                    $matches = null;
+                    preg_match('/(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)/', $v, $matches);
+                    if (!empty($matches)) {
+                        $v = $matches[1] . '-' . $matches[2] . '-' . $matches[3] . 'T' . $matches[4] . ':' . $matches[5] . ':' . $matches[6] . 'Z';
+                    }
                 }
             }
-        }
 
-        $doc->$k = $v;
+            $doc->$k = $v;
+        }
     }
-    $docs[] = $doc;
+    if ($action == 'add') {
+        $docs[] = $doc;
+    }
 }
 
 if (!empty($docs)) {
