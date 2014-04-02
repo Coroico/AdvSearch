@@ -24,14 +24,6 @@ if (!isset($_GET['ids'])) {
     die($output);
 }
 
-if (!isset($_GET['ids'])) {
-    $output = json_encode(array(
-        'success' => false,
-        'message' => 'IDs parameter is required'
-    ));
-    die($output);
-}
-
 $checkSnippet = $modx->getObject('modSnippet', array('name' => 'GetIds'));
 if (!$checkSnippet) {
     $output = json_encode(array(
@@ -104,9 +96,16 @@ if (!$client) {
 
 $update = $client->createUpdate();
 
-// add the delete query and a commit command to the update query
-$update->addDeleteQuery('id:*');
-$update->addCommit();
+$limit = isset($_GET['limit']) ? intval($_GET['limit']) : null;
+$start = isset($_GET['start']) ? intval($_GET['start']) : 0;
+$loop = isset($_GET['loop']) ? ($_GET['loop'] === 'false' ? false : true) : null;
+$reset = isset($_GET['reset']) ? ($_GET['reset'] === 'false' ? false : true) : null;
+
+if ($reset) {
+    // add the delete query and a commit command to the update query
+    $update->addDeleteQuery('id:*');
+    $update->addCommit();
+}
 
 try {
     // this executes the query and returns the result
@@ -123,20 +122,24 @@ try {
 $docs = array();
 
 $c = $modx->newQuery('modResource');
+$c->distinct();
 $c->where(array(
     'searchable' => true,
     'deleted' => false,
     'published' => true,
     'id:IN' => $lstIds
 ));
-$limit = isset($_GET['limit']) ? intval($_GET['limit']) : null;
-$c->limit($limit);
+
+$total = $modx->getCount('modResource', $c);
+
+$c->limit($limit, $start);
 $c->sortby('id', 'ASC');
 $resources = $modx->getIterator('modResource', $c);
 
-$includeTVs = isset($_GET['include_tvs']) ? (boolean) $_GET['include_tvs'] : null;
-$processTVs = isset($_GET['process_tvs']) ? (boolean) $_GET['process_tvs'] : null;
-$total = 0;
+$includeTVs = isset($_GET['include_tvs']) ? ($_GET['include_tvs'] === 'false' ? false : true) : null;
+$processTVs = isset($_GET['process_tvs']) ? ($_GET['process_tvs'] === 'false' ? false : true) : null;
+
+$count = 0;
 foreach ($resources as $resource) {
     $resourceArray = $resource->toArray();
     $templateVars = & $resource->getMany('TemplateVars');
@@ -175,7 +178,7 @@ foreach ($resources as $resource) {
         $doc->$k = $v;
     }
     $docs[] = $doc;
-    $total++;
+    $count++;
 }
 
 // add the documents and a commit command to the update query
@@ -186,18 +189,32 @@ try {
     // this executes the query and returns the result
     $result = $client->update($update);
 } catch (Exception $e) {
-    $msg = 'Error updating the data: ' . $e->getMessage();
+    $msg = '<div>Error updating the data: ' . $e->getMessage() . '</div>';
+    $errorContinue = isset($_GET['errorContinue']) ? ($_GET['errorContinue'] === 'false' ? false : true) : null;
+    if ($errorContinue && $loop) {
+        $nextStart = $start + $limit;
+    } else {
+        $nextStart = $total + 1; // just to prevent javascript
+    }
     $output = json_encode(array(
         'success' => false,
-        'message' => $msg
+        'message' => $msg,
+        'total' => $total,
+        'nextStart' => $nextStart
     ));
     die($output);
 }
+$countIds = count($lstIds);
 
+if (($countIds > $start + $limit) && $loop) {
+    $nextStart = $start + $limit;
+} else {
+    $nextStart = $total + 1; // just to prevent javascript
+}
 $output = json_encode(array(
     'success' => true,
-    'message' => 'Update query executed<br>Query time: ' . $result->getQueryTime() . ' milliseconds',
+    'message' => '<div>Update query executed - Query time: ' . $result->getQueryTime() . ' milliseconds</div>',
     'total' => $total,
-    'object' => ''
+    'nextStart' => $nextStart
         ));
 die($output);

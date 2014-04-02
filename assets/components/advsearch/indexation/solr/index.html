@@ -10,6 +10,14 @@
             .disabled {
                 background-color: #dddddd !important;
             }
+            #errorLog {
+                max-height: 300px;
+                overflow-y: scroll;
+            }
+            #output {
+                max-height: 300px;
+                overflow-y: scroll;
+            }
         </style>
         <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -24,120 +32,202 @@
     <body>
         <div class="container">
             <div class="row">
-                <div class="row">
-                    <div class="col-md-12">
-                        <h1>AdvSearch's <b>Solr</b> Indexation</h1>
-                        <div class="well">
-                            <p>Make sure you have these dependencies installed before continue:</p>
-                            <ol>
-                                <li><a href="http://modx.com/extras/package/getids" target="_blank">GetIds</a></li>
-                                <li><a href="http://wiki.solarium-project.org/index.php/V3:Installation" target="_blank">Solarium library</a></li>
-                            </ol>
+                <div class="col-md-12">
+                    <h1>AdvSearch's <b>Solr</b> Indexation</h1>
+                    <div class="well">
+                        <p>Make sure you have these dependencies installed before continue:</p>
+                        <ol>
+                            <li><a href="http://modx.com/extras/package/getids" target="_blank">GetIds</a></li>
+                            <li><a href="http://wiki.solarium-project.org/index.php/V3:Installation" target="_blank">Solarium library</a></li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <form role="form" onsubmit="return false;" id="getIds">
+                        <div class="form-group">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label for="config_file" class="col-sm-3 control-label">Absolute path of Config file</label>
+                                    <div class="col-sm-9">
+                                        <input
+                                            type="text"
+                                            class="form-control"
+                                            placeholder="[[++core_path]]components/advsearch/configs/advsearchsolrconfig.php"
+                                            name="config_file"
+                                            id="config_file"
+                                            required="required">
+                                        <small>Default is "[[++core_path]]components/advsearch/configs/advsearchsolrconfig.php"</small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <form role="form" onsubmit="return false;" id="getIds">
-                            <div class="form-group">
-                                <label for="ids" class="col-sm-3 control-label">IDs</label>
-                                <div class="col-sm-9">
-                                    <input
-                                        type="text"
-                                        class="form-control"
-                                        placeholder="Enter ID parameters of GetIds snippet"
-                                        name="ids"
-                                        id="ids"
-                                        required="required">
+                        <div class="form-group">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="ids" class="col-sm-3 control-label">IDs</label>
+                                    <div class="col-sm-9">
+                                        <input
+                                            type="text"
+                                            class="form-control"
+                                            placeholder="Enter ID parameters of GetIds snippet"
+                                            name="ids"
+                                            id="ids"
+                                            required="required">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="site_id" class="col-sm-3 control-label">Site's ID</label>
+                                    <div class="col-sm-9">
+                                        <input
+                                            type="text"
+                                            class="form-control"
+                                            placeholder="Enter site's ID"
+                                            name="site_id"
+                                            id="site_id"
+                                            required="required">
+                                    </div>
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label for="site_id" class="col-sm-3 control-label">Site's ID</label>
-                                <div class="col-sm-9">
-                                    <input
-                                        type="text"
-                                        class="form-control"
-                                        placeholder="Enter site's ID"
-                                        name="site_id"
-                                        id="site_id"
-                                        required="required">
+                        </div>
+                        <div class="form-group">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="checkbox">
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                name="include_tvs"
+                                                id="include_tvs"
+                                                value="1"
+                                                checked="checked">
+                                            Include Template Variables
+                                        </label>
+                                    </div>
+                                    <div class="checkbox">
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                name="process_tvs"
+                                                id="process_tvs"
+                                                value="1"
+                                                checked="checked">
+                                            Process Template Variables
+                                        </label>
+                                    </div>
+                                    <div class="checkbox">
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                name="loop"
+                                                id="loop"
+                                                value="1"
+                                                checked="checked">
+                                            Run in loop
+                                        </label>
+                                    </div>
+                                    <div class="checkbox">
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                name="reset"
+                                                id="reset"
+                                                value="1"
+                                                >
+                                            Reset
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="row">
+                                        <label for="limit" class="col-sm-3 control-label">Limit number of documents</label>
+                                        <div class="col-sm-9">
+                                            <input
+                                                type="text"
+                                                class="form-control"
+                                                placeholder="Leave this empty for no limit."
+                                                name="limit"
+                                                id="limit">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <label for="start" class="col-sm-3 control-label">Start from number of documents</label>
+                                        <div class="col-sm-9">
+                                            <input
+                                                type="text"
+                                                class="form-control"
+                                                name="start"
+                                                id="start">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-sm-9 col-sm-offset-3">
+                                            <div class="checkbox">
+                                                <label>
+                                                    <input
+                                                        type="checkbox"
+                                                        name="error_continue"
+                                                        id="error_continue"
+                                                        value="1"
+                                                        >
+                                                    Continue on Error
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label for="config_file" class="col-sm-3 control-label">Absolute path of Config file</label>
-                                <div class="col-sm-9">
-                                    <input
-                                        type="text"
-                                        class="form-control"
-                                        placeholder="[[++core_path]]components/advsearch/configs/advsearchsolrconfig.php"
-                                        name="config_file"
-                                        id="config_file"
-                                        required="required">
-                                    <small>Default is "[[++core_path]]components/advsearch/configs/advsearchsolrconfig.php"</small>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="include_tvs" class="col-sm-3 control-label">Include Template Variables</label>
-                                <div class="col-sm-9 checkbox">
+                        </div>
+
+                        <div class="form-group">
+                            <div class="col-sm-9 col-sm-offset-3">
+                                <button
+                                    type="submit"
+                                    id="submit-btn"
+                                    class="btn btn-danger"
+                                    onclick="submitForm();">
+                                    Submit
+                                </button>
+                                
+                                <label>
                                     <input
                                         type="checkbox"
-                                        name="include_tvs"
-                                        id="include_tvs"
+                                        name="break_loop"
+                                        id="break_loop"
                                         value="1"
-                                        checked="checked">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="process_tvs" class="col-sm-3 control-label">Process Template Variables</label>
-                                <div class="col-sm-9 checkbox">
-                                    <input
-                                        type="checkbox"
-                                        name="process_tvs"
-                                        id="process_tvs"
-                                        value="1"
-                                        checked="checked">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="limit" class="col-sm-3 control-label">Limit number of documents</label>
-                                <div class="col-sm-9">
-                                    <input
-                                        type="text"
-                                        class="form-control"
-                                        placeholder="Make a test, put a small number, eg: 2. Leave this empty for no limit."
-                                        name="limit"
-                                        id="limit">
-                                </div>
-                            </div>
-                            <p>&nbsp;</p>
-                            <div class="form-group">
-                                <div class="col-sm-9 col-sm-offset-3">
-                                    <button
-                                        type="submit"
-                                        id="submit-btn"
-                                        class="btn btn-danger"
-                                        onclick="submitForm();">
-                                        Submit
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                        &nbsp;<br/>
-                        <div class="row" style="display: none;">
-                            <div class="col-sm-9 col-sm-offset-3 text-danger" id="errorLog"></div>
-                        </div>
-                        <div class="row" style="display: none;">
-                            <div class="col-sm-9 col-sm-offset-3" id="imageLoader">
-                                <img src="ajax-loader.gif" alt="" class="img-responsive"/>
+                                        >
+                                    Break loop
+                                </label>
                             </div>
                         </div>
-                        <div class="row">
-                            <label for="output" class="col-sm-3 control-label">Total</label>
-                            <div class="col-sm-9" id="total"></div>
+                    </form>
+                    &nbsp;<br/>
+                    <div class="row" style="visibility: hidden;">
+                        <div class="col-sm-9 col-sm-offset-3" id="imageLoader">
+                            <img src="ajax-loader.gif" alt="" class="img-responsive"/>
                         </div>
-                        &nbsp;<br/>
-                        <div class="row">
-                            <label for="output" class="col-sm-3 control-label">Output</label>
-                            <div class="col-sm-9">
-                                <div id="output"></div>
-                            </div>
+                    </div>
+                    <div class="row">
+                        <label for="output" class="col-sm-3 control-label">Total</label>
+                        <div class="col-sm-9" id="total"></div>
+                    </div>
+                    <div class="row">
+                        <label for="errorLog" class="col-sm-1 control-label">Error</label>
+                        <div class="col-sm-5">
+                            <div id="errorLog"></div>
                         </div>
+                        <label for="output" class="col-sm-1 control-label">Output</label>
+                        <div class="col-sm-5">
+                            <div id="output"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="well well-sm">
+                        &copy; 2014, AdvSearch
                     </div>
                 </div>
             </div>

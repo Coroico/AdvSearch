@@ -1,4 +1,4 @@
-function submitForm() {
+function submitForm(nextStart) {
     var idsDom = $('#ids'),
             ids = idsDom.val(),
             sitesIDDom = $('#site_id'),
@@ -6,19 +6,35 @@ function submitForm() {
             configFileDom = $('#config_file'),
             configFile = configFileDom.val(),
             includeTVsDom = $('#include_tvs'),
-            includeTVs = includeTVsDom.val(),
+            includeTVs = includeTVsDom.prop('checked'),
             processTVsDom = $('#process_tvs'),
-            processTVs = processTVsDom.val(),
+            processTVs = processTVsDom.prop('checked'),
+            loopDom = $('#loop'),
+            loop = loopDom.prop('checked'),
+            start = $('#start').val(),
             limit = $('#limit').val(),
+            resetDom = $('#reset'),
+            reset = resetDom.prop('checked'),
+            errorContinueDom = $('#error_continue'),
+            errorContinue = errorContinueDom.prop('checked'),
+            breakLoopDom = $('#break_loop'),
             consoleDom = $('#errorLog'),
             imageLoader = $('#imageLoader'),
             totalDom = $('#total'),
             outputDom = $('#output'),
-            submitBtn = $('#submit-btn');
+            submitBtn = $('#submit-btn'),
+            nextStart = nextStart - 0 || 0;
 
-    totalDom.text('');
-    outputDom.text('');
-    consoleDom.parent().hide();
+    // initial running
+    if (nextStart === 0) {
+        totalDom.text('');
+        outputDom.text('');
+        consoleDom.text('');
+
+        if (start) {
+            nextStart = start;
+        }
+    }
 
     idsDom.parent().removeClass('has-error');
     if (ids.length === 0) {
@@ -40,7 +56,7 @@ function submitForm() {
     }
 
     submitBtn.prop('disabled', true);
-    imageLoader.parent().show();
+    imageLoader.parent().css('visibility', 'visible');
 
     $.ajax({
         cache: false,
@@ -51,18 +67,33 @@ function submitForm() {
             config_file: configFile,
             include_tvs: includeTVs,
             process_tvs: processTVs,
-            limit: limit
+            loop: loop,
+            errorContinue: errorContinue,
+            start: nextStart,
+            limit: limit,
+            reset: reset
         },
         dataType: 'json'
     }).done(function(data) {
+        var breakLoop = breakLoopDom.prop('checked');
         if (data.success === false) {
-            consoleDom.html('<p>' + data.message + '</p>');
-            consoleDom.parent().show();
+            consoleDom.append(data.message);
+            if (loop && !breakLoop && errorContinue && data.total && data.nextStart && (data.total - 0 > data.nextStart - 0)) {
+                setTimeout(function() {
+                    submitForm(data.nextStart);
+                }, 1000);
+            }
         } else if (data.success === true) {
             totalDom.text(data.total);
-            outputDom.html(data.message);
+            outputDom.append(data.message);
+            if (loop && !breakLoop && data.total && data.nextStart && (data.total - 0 > data.nextStart - 0)) {
+                setTimeout(function() {
+                    $('#start').val(data.nextStart);
+                    submitForm(data.nextStart);
+                }, 1000);
+            }
         }
         submitBtn.prop('disabled', false);
-        imageLoader.parent().hide();
+        imageLoader.parent().css('visibility', 'hidden');
     });
 }

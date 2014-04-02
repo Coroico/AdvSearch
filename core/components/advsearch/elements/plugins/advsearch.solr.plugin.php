@@ -95,7 +95,7 @@ function isDescendant(modX $modx, $rootIds, $resourceId) {
     if (in_array($parentId, $rootIds)) {
         return TRUE;
     }
-    return isDescendant($rootIds, $parentId);
+    return isDescendant($modx, $rootIds, $parentId);
 }
 
 switch ($modx->event->name) {
