@@ -9,7 +9,7 @@
 jQuery(function($) {
     // minimum number of characters. Should be coherent with advSearch snippet call
     var _minChars = 3;
-    var blockHistoryEvent = false;
+    var blockHistoryEvent = true;
     var gMapMarkers = [];
     var markersArray = [];
     var gMapHolder;
@@ -127,14 +127,6 @@ jQuery(function($) {
     };
 
     $.fn.advSearchInit = function(as) {
-        as.ss = $('#' + as.asid + '_' + 'advsea-submit');  // advsearch submit button if it exists
-        if (as.ss) {
-            as.ss.unbind();  // detach existing function
-        }
-        as.cl = $(as.aci);  // advsearch close button if it exists
-        if (as.cl) {
-            as.cl.unbind();  // detach existing function
-        }
         activateAsInstance(as);
         return this;
     };
@@ -173,16 +165,15 @@ jQuery(function($) {
 
     /**
      * activate search instances
-     * @param object opt options
+     * @param {object} opt options
      * @returns {undefined}
      */
     function activateSearch(opt) {
         // Each advsearch instance has its own index ias
         for (var ias = 0; ias < advsea.length; ias++) {
             var asv = eval('(' + advsea[ias] + ')');
-            asv.hstx = false;
-            if (opt && opt.hst) {
-                asv.hstx = true;
+            if (opt && opt.hstx) {
+                asv.hstx = opt.hstx;
             }
             activateAsInstance(asv);
         }
@@ -225,12 +216,15 @@ jQuery(function($) {
         as.px = p; //advsearch instance prefix
 
         as.si = $('#' + p + 'advsea-search');   // advsearch input field
+        as.si.unbind();  // detach existing function if any
         var ref = as.si;
 
         as.se = $('#' + p + 'advsea-select');   // select input field if it exists
+        as.se.unbind();  // detach existing function if any
         as.sb = "Search";
         if (!as.ls) {
             as.ss = $('#' + p + 'advsea-submit');  // advsearch submit button if it exists
+            as.ss.unbind();  // detach existing function if any
             as.sb = as.ss.attr('value');
             ref = as.ss;
         }
@@ -245,6 +239,7 @@ jQuery(function($) {
         as.ld = $(as.ali).addClass('advsea-load-img').insertAfter(ref).hide(); // advsearch load img
         as.rw = $('#' + p + 'advsea-reswin').hide().removeClass('init'); // advsearch results window - hide window
 
+        as.cl.unbind();  // detach existing function if any
         as.cl.click(function() {
             // adds the closeSearch function to the on click on close image.
             closeSearch(as);
@@ -254,12 +249,18 @@ jQuery(function($) {
         if (!as.ls) {
             // with non livesearch adds the doSearch function to the submit button
             as.ss.click(function() {
-                return doSearch(as);
-//                return false;
+                if (as.hst && as.hstx) {
+                    delete(as.hstx);
+                }
+                doSearch(as);
+                return false;
             });
         } else {
             // with the livesearch mode, adds the doLiveSearch function. Launched after each typed character.
             as.si.keyup(function() {
+                if (as.hst && as.hstx) {
+                    delete(as.hstx);
+                }
                 return doLiveSearch(as);
             });
         }
@@ -270,6 +271,9 @@ jQuery(function($) {
                 var keyCode = e.keyCode || e.which;
                 if (keyCode === 13) {
                     e.preventDefault();
+                    if (as.hst && as.hstx) {
+                        delete(as.hstx);
+                    }
                     return doSearch(as);
                 }
             });
@@ -301,7 +305,7 @@ jQuery(function($) {
 
     function setGMapMarkers(as, json) {
         if (typeof (google) !== 'object') {
-            console.log('Missing google object');
+            console.error('Missing google object');
             return;
         }
         gMapMarkers = []; // reset data
@@ -343,7 +347,7 @@ jQuery(function($) {
 
     function doSearch(as) {
         var p = as.asid + '_';      // prefix for the instance
-
+        as.hst = as.hst - 0; // type casting
         if (!as.ls && as.is) {
             return false;  // search already launched
         }
@@ -365,13 +369,16 @@ jQuery(function($) {
         }
         as.st = st;
 
-        if ((as.ii !== 'all') && (st.length < as.mc)) {
+        if ((as.ii !== 'all') ||
+                as.si.length && as.ls && (st.length < as.mc) // liveSearch needs minChars before to start
+                ) {
+            console.log('a');
             return false;
         }
 
         // ======================== we start the search
         as.is = true;
-        if (!as.ls) {
+        if ((as.ii !== 'all') && !as.ls) {
             as.ss.attr('disabled', 'disabled');  // submit button disabled
         }
 
@@ -385,7 +392,11 @@ jQuery(function($) {
             var uri = new URI(document.location.href),
                     uriQuery = uri.query(true);
         }
-        if (as.hst && as.hstx && !as.nav) {
+
+        /**
+         * Page number
+         */
+        if (as.hst && (as.hstx || searchTracker.length === 0) && !as.nav) {
             if (uriQuery[as.pax]) {
                 pars[as.pax] = uriQuery[as.pax];
             }
@@ -395,31 +406,31 @@ jQuery(function($) {
             pars[as.pax] = 1;
         }
 
-        if (typeof(pars[as.pax]) === 'undefined' || pars[as.pax] === 'undefined') {
+        if (typeof (pars[as.pax]) === 'undefined' || pars[as.pax] === 'undefined') {
             pars[as.pax] = 1;
         }
 
         // form content as serialized object
         var formDom = $('#' + p + 'advsea-form');
-        var formVals = formDom.serializeObject();
-
-        /**
-         * Override form values if this is initiated from URI
-         *
-         * @param mixed as.hst  history is enabled
-         * @param bool  as.hstx browser event is initiated
-         * @param boold as.nav  pagination link is initiated
-         */
-        if (as.hst && !as.hstx && !as.nav) {
-            if (searchTracker.length === 0) {
-                $.extend(formVals, uriQuery)
-            } else {
-                formVals = $.extend({}, uriQuery, formVals);
-            }
+        // populate URL if history exists or direct URL
+        if (as.hst && (as.hstx || searchTracker.length === 0)) {
+            var formData = {};
+            $.each(uriQuery, function(idx, val) {
+                var checkbox = /(\[\])$/.test(idx);
+                if (checkbox) {
+                    idx = idx.replace(/(\[\])$/, '');
+                    val = val.split(',');
+                }
+                formData[idx] = val;
+            });
+            formDom.populate(formData);
+            pars[as.sx] = uriQuery[as.sx];
         }
 
+        var formVals = formDom.serializeObject();
         as.fm = JSON.stringify(formVals);
-        as.pag = (as.fm !== searchTracker[searchTracker.length - 1]) ? 1 : parseInt(as.pag);	// page
+        // page
+        as.pag = (as.fm !== searchTracker[searchTracker.length - 1]) ? 1 : parseInt(as.pag);
 
         pars['asform'] = as.fm;
 
@@ -442,13 +453,13 @@ jQuery(function($) {
                     html = data.html;
                 }
 
-                as.ppg = parseInt(data.ppg);	// perPage
-                as.pag = parseInt(data.pag);	// page
-                as.pgt = parseInt(data.pgt);	// paging type
-                as.nbr = parseInt(data.nbr);	// nb results
-                as.opc = parseFloat(data.opc);	// opacity
-                as.eff = data.eff;				// effect
-                as.cdf = data.cdf;				// clearDefault
+                as.ppg = parseInt(data.ppg);    // perPage
+                as.pag = parseInt(data.pag);    // page
+                as.pgt = parseInt(data.pgt);    // paging type
+                as.nbr = parseInt(data.nbr);    // nb results
+                as.opc = parseFloat(data.opc);  // opacity
+                as.eff = data.eff;              // effect
+                as.cdf = data.cdf;              // clearDefault
 
                 as.rw.hide();
                 as.rw.html(html).css('opacity', as.opc).reswinDown(as.eff);
@@ -468,12 +479,13 @@ jQuery(function($) {
             if (!as.ls) {
                 as.ss.removeAttr('disabled'); // submit button enabled
             }
-            as.ld.hide(); // hide the load button
-            as.cl.show(); // show the close button
-            as.is = false; // new search allowed
+            as.ld.hide();   // hide the load button
+            as.cl.show();   // show the close button
+            as.is = false;  // new search allowed
             if (as.hst) {
-                blockHistoryEvent = true;
-                setHistory(as, pars);
+                if (!as.hstx) {
+                    setHistory(as, pars);
+                }
             }
 
             searchTracker.push(JSON.stringify(formDom.serializeObject()));
@@ -500,13 +512,13 @@ jQuery(function($) {
     function initPageType1(as) {  // add previous & next links after the display of results
         if (as) {
             var next = as.rw.find('.advsea-next a');
-            next.attr("href", "javascript:void(0);"); // remove href
+            next.prop("href", "javascript:void(0);"); // remove href
             next.click(function() {
                 prevNext(as, 1);
                 return false;
             });
             var prev = as.rw.find('.advsea-previous a');
-            prev.attr("href", "javascript:void(0);"); // remove href
+            prev.prop("href", "javascript:void(0);"); // remove href
             prev.click(function() {
                 prevNext(as, -1);
                 return false;
@@ -522,7 +534,7 @@ jQuery(function($) {
             var links = as.rw.find('.advsea-page a').not('.advsea-current-page a');
             links.each(function() {
                 var attr = $(this).attr("href");
-                $(this).attr("href", "javascript:void(0);"); // remove href
+                $(this).prop("href", "javascript:void(0);"); // remove href
                 var rg = /&page=([0-9]*)/i;
                 var pag = rg.exec(attr);
                 $(this).click(function() {
@@ -541,7 +553,7 @@ jQuery(function($) {
             var links = as.rw.find('.advsea-page a').not('.advsea-current-page a');
             links.each(function() {
                 var attr = $(this).attr("href");
-                $(this).attr("href", "javascript:void(0);"); // remove href
+                $(this).prop("href", "javascript:void(0);"); // remove href
                 var rg = /&page=([0-9]*)/i;
                 var pag = rg.exec(attr);
                 $(this).click(function() {
@@ -550,13 +562,13 @@ jQuery(function($) {
                 });
             });
             var next = as.rw.find('.advsea-next a');
-            next.attr("href", "javascript:void(0);"); // remove href
+            next.prop("href", "javascript:void(0);"); // remove href
             next.click(function() {
                 prevNext(as, 1);
                 return false;
             });
             var prev = as.rw.find('.advsea-previous a');
-            prev.attr("href", "javascript:void(0);"); // remove href
+            prev.prop("href", "javascript:void(0);"); // remove href
             prev.click(function() {
                 prevNext(as, -1);
                 return false;
@@ -568,15 +580,19 @@ jQuery(function($) {
 
     function prevNext(as, dir) { // update of the page of results
         as.pag = as.pag - 0 + dir; // typecasting
-        blockHistoryEvent = true;
         as.nav = 1;
+        if (as.hst && as.hstx) {
+            delete(as.hstx);
+        }
         return doSearch(as);
     }
 
     function pageLink(as, pag) { // add page link
         as.pag = pag - 0; // typecasting
-        blockHistoryEvent = true;
         as.nav = 1;
+        if (as.hst && as.hstx) {
+            delete(as.hstx);
+        }
         return doSearch(as);
     }
 
@@ -590,6 +606,7 @@ jQuery(function($) {
         }
         var href = buildUrl(as, pars);
         if (href !== document.location.href) {
+            blockHistoryEvent = true;
             History.pushState(pars, document.title, href);
         }
         return href;
@@ -600,8 +617,9 @@ jQuery(function($) {
         var parseForm = JSON.parse(as.fm);
         var uri = new URI(document.location.href),
                 uriQuery = uri.query(true);
-        var newUri = $.extend({}, uriQuery, parseForm, {sub: as.sb});
-        if (typeof(newUri[as.pax]) !== 'undefined' || newUri[as.pax] !== 'undefined') {
+//        var newUri = $.extend({}, uriQuery, parseForm, {sub: as.sb});
+        var newUri = $.extend({}, parseForm, {sub: as.sb});
+        if (typeof (newUri[as.pax]) !== 'undefined' || newUri[as.pax] !== 'undefined') {
             newUri[as.pax] = pars[as.pax];
         } else {
             newUri[as.pax] = 1;
@@ -615,12 +633,12 @@ jQuery(function($) {
 
     if (History && History.enabled) {
         History.Adapter.bind(window, 'statechange', function() {
+//console.log('blockHistoryEvent', blockHistoryEvent);
             if (!blockHistoryEvent) {
                 activateSearch({hstx: 1});
-            } else {
-                // resetting value
-                blockHistoryEvent = false;
             }
+            // resetting value
+            blockHistoryEvent = false;
         });
     }
 
