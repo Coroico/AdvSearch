@@ -39,6 +39,28 @@ class AdvSearchSolrController extends AdvSearchEngineController {
         $fields = array_merge($asContext['mainFields'], $asContext['tvFields']);
         $this->query->setFields($fields);
         $queriesString = '';
+        
+        // multiple parents support
+        if (!empty($this->config['parents'])) {
+            $queries = array();
+            $parentArray = array_map('trim', @explode(',', $this->config['parents']));
+            foreach ($parentArray as $parent) {
+                $queries[] = 'parent:' . $parent;
+            }
+            $queriesString .= '(' . @implode(' AND ', $queries) . ')';
+        }
+
+        // multiple ids support
+        if (!empty($this->config['ids'])) {
+            $queries = array();
+            $idsArray = array_map('trim', @explode(',', $this->config['ids']));
+            foreach ($idsArray as $id) {
+                $queries[] = 'id:' . $id;
+            }
+            $and = !empty($queriesString) ? ' AND ' : '';
+            $queriesString .= $and . '(' . @implode(' AND ', $queries) . ')';
+        }
+        
         if (!empty($asContext['joinedWhereFields'])) {
             $queries = array();
 
@@ -53,32 +75,13 @@ class AdvSearchSolrController extends AdvSearchEngineController {
                     $queries[] = $v . '_s:' . str_replace(' ', '* ', $asContext['searchString']) . '*';
                     $queries[] = $v . '_s:*' . str_replace(' ', ' *', $asContext['searchString']);
                 }
-            } else {
+            } elseif (empty($queriesString)) {
                 $queries[] = '*:*';
             }
-            $queriesString = '(' . @implode(' OR ', $queries) . ')';
-        }
-
-        // multiple parents support
-        if (!empty($this->config['parents'])) {
-            $queries = array();
-            $parentArray = array_map('trim', explode(',', $this->config['parents']));
-            foreach ($parentArray as $parent) {
-                $queries[] = 'parent:' . $parent;
+            if (!empty($queries)) {
+                $and = !empty($queriesString) ? ' AND ' : '';
+                $queriesString .= $and . '(' . @implode(' OR ', $queries) . ')';
             }
-            $and = !empty($queriesString) ? ' AND ' : '';
-            $queriesString .= $and . '(' . @implode(' AND ', $queries) . ')';
-        }
-
-        // multiple ids support
-        if (!empty($this->config['ids'])) {
-            $queries = array();
-            $idsArray = array_map('trim', explode(',', $this->config['ids']));
-            foreach ($idsArray as $id) {
-                $queries[] = 'id:' . $id;
-            }
-            $and = !empty($queriesString) ? ' AND ' : '';
-            $queriesString .= $and . '(' . @implode(' AND ', $queries) . ')';
         }
 
         if (isset($asContext['queryHook']) &&
