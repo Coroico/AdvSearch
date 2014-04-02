@@ -7,6 +7,7 @@ error_reporting(-1);
 define('MODX_API_MODE', true);
 include ('../../../../../index.php');
 
+$output = '';
 if (!isset($_GET['siteId']) || $_GET['siteId'] !== $modx->site_id) {
     $output = json_encode(array(
         'success' => false,
@@ -49,11 +50,13 @@ if (!class_exists('ModxIndexedDocument')) {
             $this->addField(Zend_Search_Lucene_Field::Keyword('docid', $docId));
             $this->addField(Zend_Search_Lucene_Field::UnIndexed('url', $url));
             $this->addField(Zend_Search_Lucene_Field::UnIndexed('createdon', $document->get('createdon')));
-            if ($document->get('introtext'))
+            if ($document->get('introtext')) {
                 $this->addField(Zend_Search_Lucene_Field::Text('introtext', $document->get('introtext')));
+            }
             $this->addField(Zend_Search_Lucene_Field::Text('pagetitle', $document->get('pagetitle')));
-            if ($document->get('longtitle'))
+            if ($document->get('longtitle')) {
                 $this->addField(Zend_Search_Lucene_Field::Text('longtitle', $document->get('longtitle')));
+            }
 
             // process content
             // get unparsed content
@@ -158,10 +161,11 @@ if (!class_exists('AdvSearchIndex')) {
  */
 $indexPath = MODX_CORE_PATH . 'docindex/zend';
 
-if (file_exists($indexPath))
+if (file_exists($indexPath)) {
     $index = Zend_Search_Lucene::open($indexPath);
-else
+} else {
     $index = Zend_Search_Lucene::create($indexPath);
+}
 
 // get Ids resources
 $config = array(
@@ -178,8 +182,8 @@ $config = array(
 $asIndex = new AdvSearchIndex($modx, $config);
 $documents = $asIndex->getResources();
 
+$outputs = array();
 if (!empty($documents)) {
-    $outputs = array();
     foreach ($documents as $document) {
         $docId = $document->get('id');
 
@@ -187,8 +191,9 @@ if (!empty($documents)) {
 
         // find the document $id based on the indexed "id" field
         $docIds = $index->termDocs(new Zend_Search_Lucene_Index_Term($docId, 'docid'));
-        foreach ($docIds as $docId)
+        foreach ($docIds as $docId) {
             $index->delete($docId);
+        }
 
         // re-add the document
         $index->addDocument(new ModxIndexedDocument($modx, $document));
