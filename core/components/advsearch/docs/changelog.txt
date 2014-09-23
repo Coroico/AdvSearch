@@ -2,6 +2,7 @@ Changelog for AdvSearch
 
 AdvSearch dev
 -------------------
+- [#73] Replace getMicroTime method with standart PHP microtime. getMicroTime was deleted in modx 2.3.
 - [#45] add page and totalPage placeholders
 - [#67] apply addJs=0
 - add plugin to index/remove resource from solr's index
