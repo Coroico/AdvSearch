@@ -252,14 +252,14 @@ class AdvSearchForm extends AdvSearchUtil {
             if (!empty($ajaxLoaderImage)) {
                 $jsHeaderArray['ali'] = addslashes(trim($ajaxLoaderImage));
                 // DOM ID that holds the loader image
-                $jsHeaderArray['alii'] = $this->modx->getOption('ajaxLoaderImageDOMId', $this->config, $this->config['asId'] . '_load');
+                $jsHeaderArray['alii'] = $this->modx->getOption('ajaxLoaderImageDOMId', $this->config);
             }
             // close image
             $ajaxCloseImage = $this->processElementTags($this->parseTpl($ajaxCloseImageTpl));
             if (!empty($ajaxCloseImage)) {
                 $jsHeaderArray['aci'] = addslashes(trim($ajaxCloseImage));
                 // DOM ID that holds the loader image
-                $jsHeaderArray['acii'] = $this->modx->getOption('ajaxCloseImageDOMId', $this->config, $this->config['asId'] . '_close');
+                $jsHeaderArray['acii'] = $this->modx->getOption('ajaxCloseImageDOMId', $this->config);
             }
 
             /**
