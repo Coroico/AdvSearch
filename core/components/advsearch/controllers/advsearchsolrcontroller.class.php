@@ -89,7 +89,11 @@ class AdvSearchSolrController extends AdvSearchEngineController {
                 isset($asContext['queryHook']['andConditionsRaw']) &&
                 !empty($asContext['queryHook']['andConditionsRaw'])) {
 
-            $conditions = $this->processHookConditions($asContext);
+            if ($asContext['queryHook']['version'] == '1.3') {
+                $conditions = $this->processHookConditions($asContext);
+            } else {
+                $conditions = $this->processHookConditionsDeprecated($asContext);
+            }
 
             if (!empty($conditions)) {
                 $conditionsString = @implode(' AND ', $conditions);
@@ -150,59 +154,121 @@ class AdvSearchSolrController extends AdvSearchEngineController {
     }
 
     public function processHookConditions($asContext) {
-            $conditions = array();
-            foreach ($asContext['queryHook']['andConditionsRaw'] as $keyCondition => $valueCondition) {
-                $keyElts = array_map("trim", explode(':', $keyCondition));
-                if (count($keyElts) == 1) {
-                    $keyElts[1] = '=';
-                } elseif (count($keyElts) == 2) {
-                    if ($keyElts[1] == 'REGEXP') {
-                        $keyElts[2] = '%s';
-                    } else {
-                        $keyElts[2] = '';
-                    }
-                }
+        $conditions = array();
+        
+        foreach ($asContext['queryHook']['andConditionsRaw'] as $keyCondition => $valueCondition) {
+            $keyElts = array_map("trim", explode(':', $keyCondition));
+            if (count($keyElts) == 1) {
+                $keyElts[1] = '=';
+            }
+            
+            $keyCondition = implode(':', $keyElts);
+            $oper = strtoupper($keyElts[1]); // operator
+            // $ptrn = strtolower($keyElts[2]); // pattern
+            // pattern
+            $ptrn = !empty($valueCondition['pattern']) ?
+                    strtolower($valueCondition['pattern']) :
+                    ($oper == 'REGEXP' ? '%s' : '');
 
-                $keyCondition = implode(':', $keyElts);
-                $oper = strtoupper($keyElts[1]); // operator
-                $ptrn = strtolower($keyElts[2]); // pattern
+            $classFieldElts = array_map("trim", explode('.', $keyElts[0]));
+            $class = (count($classFieldElts) == 2) ? $classFieldElts[0] : '';
+            $class = trim($class, '`');
+            $field = (count($classFieldElts) == 2) ? $classFieldElts[1] : $classFieldElts[0];
+            $field = trim($field, '`');
 
-                $classFieldElts = array_map("trim", explode('.', $keyElts[0]));
-                $class = (count($classFieldElts) == 2) ? $classFieldElts[0] : '';
-                $class = trim($class, '`');
-                $field = (count($classFieldElts) == 2) ? $classFieldElts[1] : $classFieldElts[0];
-                $field = trim($field, '`');
+            // $valueElts = array_map("trim", @explode(':', $valueCondition));
+            $tag = isset($valueCondition['key']) && !empty($valueCondition['key']) ? $valueCondition['key'] : '';
+            $typeValue = (!empty($valueCondition['method'])) ? strtolower($valueCondition['method']) : 'request';
+            $filtered = (!empty($valueCondition['ignoredValue'])) ? array_map("trim", @explode(',', $valueCondition['ignoredValue'])) : array();
 
-                $valueElts = array_map("trim", explode(':', $valueCondition));
-                $tag = $valueElts[0];
-                $typeValue = (!empty($valueElts[1])) ? strtolower($valueElts[1]) : 'request';
-                $filtered = (!empty($valueElts[2])) ? array_map("trim", explode(',', $valueElts[2])) : array();
-
-                if ($typeValue == 'request') { // the value is provided par an http variable
-                    if (isset($_REQUEST[$tag])) {
-                        if (is_array($_REQUEST[$tag])) {
-                            // multiple list
-                            $values = $_REQUEST[$tag];
-                            $orConditions = array();
-                            foreach ($values as $val) {
-                                $val = strip_tags($val);
-                                if (($val != '') && !in_array($val, $filtered)) {
-                                    $orConditions[] = $this->processHookValue($asContext['queryHook'], $field, $oper, $ptrn, $val);
-                                }
-                            }
-                            if (count($orConditions)) {
-                                $conditions[] = '(' . implode(' OR ', $orConditions) . ')';
-                            }
-                        } else {
-                            // single value
-                            $val = strip_tags($_REQUEST[$tag]);
+            if ($typeValue == 'request' && !empty($tag)) { // the value is provided par an http variable
+                if (isset($_REQUEST[$tag])) {
+                    if (is_array($_REQUEST[$tag])) {
+                        // multiple list
+                        $values = $_REQUEST[$tag];
+                        $orConditions = array();
+                        foreach ($values as $val) {
+                            $val = strip_tags($val);
                             if (($val != '') && !in_array($val, $filtered)) {
-                                $conditions[] = $this->processHookValue($asContext['queryHook'], $field, $oper, $ptrn, $val);
+                                $orConditions[] = $this->processHookValue($asContext['queryHook'], $field, $oper, $ptrn, $val);
                             }
+                        }
+                        if (count($orConditions)) {
+                            $conditions[] = '(' . implode(' OR ', $orConditions) . ')';
+                        }
+                    } else {
+                        // single value
+                        $val = strip_tags($_REQUEST[$tag]);
+                        if (($val != '') && !in_array($val, $filtered)) {
+                            $conditions[] = $this->processHookValue($asContext['queryHook'], $field, $oper, $ptrn, $val);
                         }
                     }
                 }
-            } // foreach
+            }
+        } // foreach
+
+        return $conditions;
+    }
+    
+    /**
+     * @deprecated since version 1.3
+     * @param array $asContext
+     * @return array
+     */
+    public function processHookConditionsDeprecated($asContext) {
+        $conditions = array();
+        foreach ($asContext['queryHook']['andConditionsRaw'] as $keyCondition => $valueCondition) {
+            $keyElts = array_map("trim", explode(':', $keyCondition));
+            if (count($keyElts) == 1) {
+                $keyElts[1] = '=';
+            } elseif (count($keyElts) == 2) {
+                if ($keyElts[1] == 'REGEXP') {
+                    $keyElts[2] = '%s';
+                } else {
+                    $keyElts[2] = '';
+                }
+            }
+
+            $keyCondition = implode(':', $keyElts);
+            $oper = strtoupper($keyElts[1]); // operator
+            $ptrn = strtolower($keyElts[2]); // pattern
+
+            $classFieldElts = array_map("trim", explode('.', $keyElts[0]));
+            $class = (count($classFieldElts) == 2) ? $classFieldElts[0] : '';
+            $class = trim($class, '`');
+            $field = (count($classFieldElts) == 2) ? $classFieldElts[1] : $classFieldElts[0];
+            $field = trim($field, '`');
+
+            $valueElts = array_map("trim", explode(':', $valueCondition));
+            $tag = $valueElts[0];
+            $typeValue = (!empty($valueElts[1])) ? strtolower($valueElts[1]) : 'request';
+            $filtered = (!empty($valueElts[2])) ? array_map("trim", explode(',', $valueElts[2])) : array();
+
+            if ($typeValue == 'request') { // the value is provided par an http variable
+                if (isset($_REQUEST[$tag])) {
+                    if (is_array($_REQUEST[$tag])) {
+                        // multiple list
+                        $values = $_REQUEST[$tag];
+                        $orConditions = array();
+                        foreach ($values as $val) {
+                            $val = strip_tags($val);
+                            if (($val != '') && !in_array($val, $filtered)) {
+                                $orConditions[] = $this->processHookValue($asContext['queryHook'], $field, $oper, $ptrn, $val);
+                            }
+                        }
+                        if (count($orConditions)) {
+                            $conditions[] = '(' . implode(' OR ', $orConditions) . ')';
+                        }
+                    } else {
+                        // single value
+                        $val = strip_tags($_REQUEST[$tag]);
+                        if (($val != '') && !in_array($val, $filtered)) {
+                            $conditions[] = $this->processHookValue($asContext['queryHook'], $field, $oper, $ptrn, $val);
+                        }
+                    }
+                }
+            }
+        } // foreach
 
         return $conditions;
     }
