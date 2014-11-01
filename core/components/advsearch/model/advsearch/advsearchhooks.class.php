@@ -322,11 +322,17 @@ class AdvSearchHooks {
                 $classField = "{$this->modx->escape($class)}.{$this->modx->escape($field)}";
             }
 
-            // $valueElts = array_map("trim", @explode(':', $valueCondition));
-            $tag = isset($valueCondition['key']) && !empty($valueCondition['key']) ? $valueCondition['key'] : '';
-            $typeValue = (!empty($valueCondition['method'])) ? strtolower($valueCondition['method']) : 'request';
-            $filtered = (!empty($valueCondition['ignoredValue'])) ? array_map("trim", @explode(',', $valueCondition['ignoredValue'])) : array();
-
+            if (is_array($valueCondition)) {
+                $tag = isset($valueCondition['key']) && !empty($valueCondition['key']) ? $valueCondition['key'] : '';
+                $typeValue = (!empty($valueCondition['method'])) ? strtolower($valueCondition['method']) : 'request';
+                $filtered = (!empty($valueCondition['ignoredValue'])) ? array_map("trim", @explode(',', $valueCondition['ignoredValue'])) : array();
+            } else {
+                $valueElts = array_map("trim", @explode(':', $valueCondition));
+                $tag = $valueElts[0];
+                $typeValue = (!empty($valueElts[1])) ? strtolower($valueElts[1]) : 'request';
+                $filtered = (!empty($valueElts[2])) ? array_map("trim", explode(',', $valueElts[2])) : array();
+            }
+            
             if ($typeValue == 'request' && !empty($tag)) { // the value is provided par an http variable
                 if (isset($_REQUEST[$tag])) {
                     if (is_array($_REQUEST[$tag])) {
@@ -371,7 +377,6 @@ class AdvSearchHooks {
                     $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $orCondition);
                 }
             }
-            
         }
         
         return $conditions;

@@ -2,7 +2,6 @@ Changelog for AdvSearch
 
 AdvSearch dev
 -------------------
-- [#75] Added translations for Romanian and Russian languages
 - [#73] Replace getMicroTime method with standart PHP microtime. getMicroTime was deleted in modx 2.3.
 - [#45] add page and totalPage placeholders
 - [#67] apply addJs=0

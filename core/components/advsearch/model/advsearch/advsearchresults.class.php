@@ -240,7 +240,7 @@ class AdvSearchResults extends AdvSearchUtil {
             $checkedFieldPotency = array();
             foreach ($fieldPotency as $fldp) {
                 $fld = array_map('trim', explode(':', $fldp));
-                $fld[1] = (isset($fld[1]) && intval($fld[1])) ? $fld[1] : 1;
+                $fld[1] = (isset($fld[1]) && floatval($fld[1])) ? floatval($fld[1]) : 1;
                 $checkedFieldPotency[] = implode(':', $fld);
             }
             $this->config['fieldPotency'] = implode(',', $checkedFieldPotency);

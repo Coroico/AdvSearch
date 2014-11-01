@@ -464,6 +464,7 @@ class AdvSearch extends AdvSearchUtil {
                     $result['link'] = $this->modx->makeUrl($result[$asr->primaryKey], $ctx, '', $this->config['urlScheme']);
                 }
             }
+
             if ($this->config['toArray']) {
                 $resultsArray[] = $result;
             } else {
@@ -850,7 +851,7 @@ class AdvSearch extends AdvSearchUtil {
 
         if ($this->page == $idx) {
             $pagePh['link'] = $idx;
-            $output = $this->processElementTags($this->parseTpl($this->config['currentPageTpl'], $pagePh));
+            $output = $this->processElementTags($this->parseTpl($this->config['paging3CurrentPageTpl'], $pagePh));
         } else {
             $parameters = array_merge($parameters, array(
                 $this->config['pageIndex'] => $idx

@@ -4,13 +4,13 @@
  * @link http://wiki.apache.org/lucene-java/ImproveIndexingSpeed
  * @link http://wiki.apache.org/lucene-java/ImproveSearchingSpeed
  */
-
 include_once dirname(__FILE__) . '/advsearchenginecontroller.class.php';
 
 class AdvSearchSolrController extends AdvSearchEngineController {
 
     /** @var A reference to the Solarium\Client object */
     protected $client;
+
     /** @var A reference to the Solarium\Client::createSelect() object */
     protected $query;
 
@@ -39,7 +39,7 @@ class AdvSearchSolrController extends AdvSearchEngineController {
         $fields = array_merge($asContext['mainFields'], $asContext['tvFields']);
         $this->query->setFields($fields);
         $queriesString = '';
-        
+
         // multiple parents support
         if (!empty($this->config['parents'])) {
             $queries = array();
@@ -60,7 +60,7 @@ class AdvSearchSolrController extends AdvSearchEngineController {
             $and = !empty($queriesString) ? ' AND ' : '';
             $queriesString .= $and . '(' . @implode(' AND ', $queries) . ')';
         }
-        
+
         if (!empty($asContext['joinedWhereFields'])) {
             $queries = array();
 
@@ -105,6 +105,19 @@ class AdvSearchSolrController extends AdvSearchEngineController {
             }
         }
 
+        if (!empty($this->config['fieldPotency'])) {
+            $edismax = $this->query->getEDisMax();
+            $fieldPotency = array_map('trim', explode(',', $this->config['fieldPotency']));
+            $queryFields = array();
+            foreach ($fieldPotency as $fldp) {
+                $fld = array_map('trim', explode(':', $fldp));
+                $fld[1] = (isset($fld[1]) && floatval($fld[1])) ? number_format($fld[1], 1) : 1;
+                $queryFields[] = $fld[0] . '^' . $fld[1];
+            }
+            $queryFields = implode(' ', $queryFields);
+            $edismax->setQueryFields($queryFields);
+        }
+
         $this->query->setQuery($queriesString);
         $this->query->setStart(($asContext['page'] - 1) * $this->config['perPage'])->setRows($this->config['perPage']);
         if (!empty($asContext['sortby'])) {
@@ -134,7 +147,7 @@ class AdvSearchSolrController extends AdvSearchEngineController {
 
         if ($this->config['debug']) {
             $request = $this->client->createRequest($this->query);
-            $debugInfo = (string)$request;
+            $debugInfo = (string) $request;
             $this->ifDebug('Solarium $debugInfo: ' . $debugInfo, __METHOD__, __FILE__, __LINE__);
         }
 
@@ -155,13 +168,13 @@ class AdvSearchSolrController extends AdvSearchEngineController {
 
     public function processHookConditions($asContext) {
         $conditions = array();
-        
+
         foreach ($asContext['queryHook']['andConditionsRaw'] as $keyCondition => $valueCondition) {
             $keyElts = array_map("trim", explode(':', $keyCondition));
             if (count($keyElts) == 1) {
                 $keyElts[1] = '=';
             }
-            
+
             $keyCondition = implode(':', $keyElts);
             $oper = strtoupper($keyElts[1]); // operator
             // $ptrn = strtolower($keyElts[2]); // pattern
@@ -209,7 +222,7 @@ class AdvSearchSolrController extends AdvSearchEngineController {
 
         return $conditions;
     }
-    
+
     /**
      * @deprecated since version 1.3
      * @param array $asContext
@@ -277,7 +290,7 @@ class AdvSearchSolrController extends AdvSearchEngineController {
         $condition = '';
         if ($queryHook['version'] == '1.3') {
             switch ($oper) {
-                    /* @since 1.3 */
+                /* @since 1.3 */
                 case 'MATCH':
                     $val = addslashes($val);
                     $condition = "{$field}_s:/.*{$val}.*/"; // run regex on "string" fieldtype of field's clone instead

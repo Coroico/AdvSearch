@@ -41,6 +41,7 @@ $_lang['advsearch.results_found_singular'] = '[[+count]] result found';
 $_lang['advsearch.result_pages'] = 'Result pages:';
 $_lang['advsearch.box_text'] = 'Search here...';
 $_lang['advsearch.help_title'] = 'More information about advanced search';
+$_lang['advsearch.help'] = 'Help';
 $_lang['advsearch.invalid_query'] = 'Inconsistent or invalid query';
 $_lang['advsearch.maxwords'] = 'Maximum number of words for searching: [[+maxwords]]';
 $_lang['advsearch.minchars'] = 'Search with "[[+minterm]]" is invalid. Minimum number of characters allowed for a search term: [[+minchars]] ';
