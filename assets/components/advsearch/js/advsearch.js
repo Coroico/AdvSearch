@@ -82,7 +82,7 @@ jQuery(function($) {
 
                     var marker = new google.maps.Marker(markerOptions);
 
-                    google.maps.event.addListener(marker, 'click', function(e) {
+                    google.maps.event.addListener(marker, 'click', function(event) {
                         $.ajax({
                             url: as.gmpWin,
                             cache: false,
@@ -131,9 +131,9 @@ jQuery(function($) {
         return this;
     };
 
-    $.fn.reswinUp = function(e) {
+    $.fn.reswinUp = function(action) {
         return this.each(function() {
-            switch (e) {
+            switch (action) {
                 case "showfade":
                     $(this).fadeOut(800).hide(1200);
                     break;
@@ -147,9 +147,9 @@ jQuery(function($) {
         });
     };
 
-    $.fn.reswinDown = function(e) {
+    $.fn.reswinDown = function(action) {
         return this.each(function() {
-            switch (e) {
+            switch (action) {
                 case "showfade":
                     $(this).show(800).fadeIn(1200);
                     break;
@@ -232,15 +232,27 @@ jQuery(function($) {
         $('.advsea-close-img').each(function() {
             $(this).remove();
         });
-        as.cl = $(as.aci).addClass('advsea-close-img').insertAfter(ref).hide(); // advsearch close img
+        if (as.acii && $('#' + as.acii)[0]) {
+            as.cl = $(as.aci).addClass('advsea-close-img').hide(); // advsearch close img
+            $('#' + as.acii).html(as.cl);
+        } else {
+            as.cl = $(as.aci).addClass('advsea-close-img').insertAfter(ref).hide(); // advsearch close img
+        }
         $('.advsea-load-img').each(function() {
             $(this).remove();
         });
-        as.ld = $(as.ali).addClass('advsea-load-img').insertAfter(ref).hide(); // advsearch load img
+        if (as.alii && $('#' + as.alii)[0]) {
+            as.ld = $(as.ali).addClass('advsea-load-img').hide(); // advsearch load img
+            $('#' + as.alii).html(as.ld);
+        } else {
+            as.ld = $(as.ali).addClass('advsea-load-img').insertAfter(ref).hide(); // advsearch load img
+        }
+        
         as.rw = $('#' + p + 'advsea-reswin').hide().removeClass('init'); // advsearch results window - hide window
 
         as.cl.unbind();  // detach existing function if any
-        as.cl.click(function() {
+        as.cl.click(function(event) {
+            (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
             // adds the closeSearch function to the on click on close image.
             closeSearch(as);
             return false;
@@ -248,7 +260,8 @@ jQuery(function($) {
 
         if (!as.ls) {
             // with non livesearch adds the doSearch function to the submit button
-            as.ss.click(function() {
+            as.ss.click(function(event) {
+                (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
                 if (as.hst && as.hstx) {
                     delete(as.hstx);
                 }
@@ -267,10 +280,10 @@ jQuery(function($) {
 
         if (as.si.length) {
             // add the doSearch function to the input field. Launched after each typed character.
-            as.si.keydown(function(e) {
-                var keyCode = e.keyCode || e.which;
+            as.si.keydown(function(event) {
+                var keyCode = event.keyCode || event.which;
                 if (keyCode === 13) {
-                    e.preventDefault();
+                    (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
                     if (as.hst && as.hstx) {
                         delete(as.hstx);
                     }
@@ -372,7 +385,6 @@ jQuery(function($) {
         if ((as.ii !== 'all') ||
                 as.si.length && as.ls && (st.length < as.mc) // liveSearch needs minChars before to start
                 ) {
-            console.log('a');
             return false;
         }
 
@@ -513,13 +525,17 @@ jQuery(function($) {
         if (as) {
             var next = as.rw.find('.advsea-next a');
             next.prop("href", "javascript:void(0);"); // remove href
-            next.click(function() {
+            next.attr("href", "javascript:void(0);"); // remove href, blame IE
+            next.click(function(event) {
+                (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
                 prevNext(as, 1);
                 return false;
             });
             var prev = as.rw.find('.advsea-previous a');
             prev.prop("href", "javascript:void(0);"); // remove href
-            prev.click(function() {
+            prev.attr("href", "javascript:void(0);"); // remove href, blame IE
+            prev.click(function(event) {
+                (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
                 prevNext(as, -1);
                 return false;
             });
@@ -533,11 +549,16 @@ jQuery(function($) {
         if (as) {
             var links = as.rw.find('.advsea-page a').not('.advsea-current-page a');
             links.each(function() {
-                var attr = $(this).attr("href");
+                var href = $(this).data("href");
+                if (typeof(href) === 'undefined' || href === '') {
+                    href = $(this).attr("href");
+                }
                 $(this).prop("href", "javascript:void(0);"); // remove href
+                $(this).attr("href", "javascript:void(0);"); // remove href, blame IE
                 var rg = /&page=([0-9]*)/i;
-                var pag = rg.exec(attr);
-                $(this).click(function() {
+                var pag = rg.exec(href);
+                $(this).click(function(event) {
+                    (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
                     pageLink(as, pag[1]);
                     return false;
                 });
@@ -552,24 +573,33 @@ jQuery(function($) {
         if (as) {
             var links = as.rw.find('.advsea-page a').not('.advsea-current-page a');
             links.each(function() {
-                var attr = $(this).attr("href");
+                var href = $(this).data("href");
+                if (typeof(href) === 'undefined' || href === '') {
+                    href = $(this).attr("href");
+                }
                 $(this).prop("href", "javascript:void(0);"); // remove href
+                $(this).attr("href", "javascript:void(0);"); // remove href, blame IE
                 var rg = /&page=([0-9]*)/i;
-                var pag = rg.exec(attr);
-                $(this).click(function() {
+                var pag = rg.exec(href);
+                $(this).click(function(event) {
+                    (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
                     pageLink(as, pag[1]);
                     return false;
                 });
             });
             var next = as.rw.find('.advsea-next a');
             next.prop("href", "javascript:void(0);"); // remove href
-            next.click(function() {
+            next.attr("href", "javascript:void(0);"); // remove href, blame IE
+            next.click(function(event) {
+                (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
                 prevNext(as, 1);
                 return false;
             });
             var prev = as.rw.find('.advsea-previous a');
             prev.prop("href", "javascript:void(0);"); // remove href
-            prev.click(function() {
+            prev.attr("href", "javascript:void(0);"); // remove href, blame IE
+            prev.click(function(event) {
+                (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
                 prevNext(as, -1);
                 return false;
             });
@@ -617,9 +647,9 @@ jQuery(function($) {
         var parseForm = JSON.parse(as.fm);
         var uri = new URI(document.location.href),
                 uriQuery = uri.query(true);
-//        var newUri = $.extend({}, uriQuery, parseForm, {sub: as.sb});
+        //var newUri = $.extend({}, uriQuery, parseForm, {sub: as.sb});
         var newUri = $.extend({}, parseForm, {sub: as.sb});
-        if (typeof (newUri[as.pax]) !== 'undefined' || newUri[as.pax] !== 'undefined') {
+        if (typeof (newUri[as.pax]) !== 'undefined' || newUri[as.pax] !== 'undefined' && (newUri[as.pax] - 0) === as.pag) {
             newUri[as.pax] = pars[as.pax];
         } else {
             newUri[as.pax] = 1;
@@ -628,12 +658,15 @@ jQuery(function($) {
             $.merge(asformArr, [index + '=' + item]);
         });
         var asformStr = "?" + asformArr.join('&');
+        var hash = uri.hash();
+        if (hash) {
+            asformStr = asformStr + hash;
+        }
         return document.location.origin + document.location.pathname + asformStr;
     }
 
     if (History && History.enabled) {
         History.Adapter.bind(window, 'statechange', function() {
-//console.log('blockHistoryEvent', blockHistoryEvent);
             if (!blockHistoryEvent) {
                 activateSearch({hstx: 1});
             }

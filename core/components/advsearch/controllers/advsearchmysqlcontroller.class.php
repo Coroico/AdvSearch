@@ -64,7 +64,7 @@ class AdvSearchMysqlController extends AdvSearchEngineController {
                 if (!empty($asContext['tvWhereFields']) && !empty($asContext['searchString'])) {
                     $tvWhereFields = array();
                     foreach ($asContext['tvWhereFields'] as $tv) {
-                        $tvWhereFields[] = '`'.$tv.'_cv`.`value`';
+                        $tvWhereFields[] = '`' . $tv . '_cv`.`value`';
                     }
                     $tvWhereFields = @implode(',', $tvWhereFields);
                     $c->select(array(
@@ -129,7 +129,6 @@ class AdvSearchMysqlController extends AdvSearchEngineController {
 
         // add joined resources
 //        $c = $this->_addJoinedResources($c);
-
         //============================= add pre-conditions (published, searchable, undeleted, lstIds, hideMenu, hideContainers)
         // restrict search to published, searcheable and undeleted modResource resources
         $c->andCondition(array('published' => '1', 'searchable' => '1', 'deleted' => '0'));
@@ -195,12 +194,11 @@ class AdvSearchMysqlController extends AdvSearchEngineController {
 
             // get number of results before pagination
             $this->resultsCount = $this->getQueryCount('modResource', $c);
-            $this->ifDebug('Number of results before pagination ' . ($fulltext ? '(FULLTEXT) : ' : '(LIKE) : '). $this->resultsCount, __METHOD__, __FILE__, __LINE__);
+            $this->ifDebug('Number of results before pagination ' . ($fulltext ? '(FULLTEXT) : ' : '(LIKE) : ') . $this->resultsCount, __METHOD__, __FILE__, __LINE__);
 
             if ($this->resultsCount > 0) {
                 $this->setPage($asContext['page']);
                 $c->limit($this->config['perPage'], ($asContext['page'] - 1) * $this->config['perPage']);
-
                 // debug mysql query
                 if ($fulltext) {
                     $this->ifDebug('FULLTEXT Query : ');
@@ -232,15 +230,10 @@ class AdvSearchMysqlController extends AdvSearchEngineController {
             $this->results = $this->prepareResults($this->results);
         }
 
-        $countCheck = count($this->results);
-        if ($countCheck === 0) {
-            $this->resultsCount = 0;
-        }
-
         return $this->results;
     }
 
-    private function _countStmt(xPDOQuery $c, $asContext){
+    private function _countStmt(xPDOQuery $c, $asContext) {
         return count($this->results);
     }
 

@@ -126,6 +126,7 @@ class AdvSearchResults extends AdvSearchUtil {
         // reset pagination if the output empty while the counter shows more
         if ($this->resultsCount > 0 && count($this->results) === 0) {
             $asContext['page'] = 1;
+            $this->page = 1;
             return $this->doSearch($asContext);
         }
 

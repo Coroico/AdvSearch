@@ -291,7 +291,8 @@ class AdvSearchHooks {
     }
 
     public function processConditions($andConditions, & $requests) {
-        $conditions = array();
+        $conditions = array(); 
+
         foreach ($andConditions as $keyCondition => $valueCondition) {
             $keyElts = array_map("trim", @explode(':', $keyCondition));
             if (count($keyElts) == 1) {
@@ -332,49 +333,47 @@ class AdvSearchHooks {
                 $typeValue = (!empty($valueElts[1])) ? strtolower($valueElts[1]) : 'request';
                 $filtered = (!empty($valueElts[2])) ? array_map("trim", explode(',', $valueElts[2])) : array();
             }
-            
-            if ($typeValue == 'request' && !empty($tag)) { // the value is provided par an http variable
-                if (isset($_REQUEST[$tag])) {
-                    if (is_array($_REQUEST[$tag])) {
-                        // multiple list
-                        $values = $_REQUEST[$tag];
-                        $orConditions = array();
-                        foreach ($values as $val) {
-                            $val = strip_tags($val);
-                            if (($val != '') && !in_array($val, $filtered)) {
-                                $requests[$tag][] = $val;
-                                $orConditions[] = $this->processValue($class, $classField, $oper, $ptrn, $val);
-                            }
-                        }
-                        if (count($orConditions)) {
-                            $orCondition = '(' . implode(' OR ', $orConditions) . ')';
-                            if ($class != 'tv') {
-                                $conditions[] = $orCondition;
-                            } else {
-                                $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $orCondition);
-                            }
-                        }
-                    } else {
-                        // single value
-                        $val = strip_tags($_REQUEST[$tag]);
+
+            if ($typeValue == 'request' && !empty($tag) && isset($_REQUEST[$tag])) { // the value is provided par an http variable
+                if (is_array($_REQUEST[$tag])) {
+                    // multiple list
+                    $values = $_REQUEST[$tag];
+                    $orConditions = array();
+                    foreach ($values as $val) {
+                        $val = strip_tags($val);
                         if (($val != '') && !in_array($val, $filtered)) {
-                            $requests[$tag] = $val;
-                            $orCondition = $this->processValue($class, $classField, $oper, $ptrn, $val);
-                            if ($class != 'tv') {
-                                $conditions[] = $orCondition;
-                            } else {
-                                $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $orCondition);
-                            }
+                            $requests[$tag][] = $val;
+                            $orConditions[] = $this->processValue($class, $classField, $oper, $ptrn, $val);
+                        }
+                    }
+                    if (count($orConditions)) {
+                        $orCondition = '(' . implode(' OR ', $orConditions) . ')';
+                        if ($class !== 'tv') {
+                            $conditions[] = $orCondition;
+                        } else {
+                            $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $orCondition);
+                        }
+                    }
+                } else {
+                    // single value
+                    $val = strip_tags($_REQUEST[$tag]);
+                    if (($val != '') && !in_array($val, $filtered)) {
+                        $requests[$tag] = $val;
+                        $processValue = $this->processValue($class, $classField, $oper, $ptrn, $val);
+                        if ($class != 'tv') {
+                            $conditions[] = $processValue;
+                        } else {
+                            $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $processValue);
                         }
                     }
                 }
             } else {
                 // field:oper => CONST  (where CONST is a numeric or a string)
-                $orCondition = $this->processValue($class, $classField, $oper, $ptrn, $tag);
-                if ($class != 'tv') {
-                    $conditions[] = $orCondition;
+                $processValue = $this->processValue($class, $classField, $oper, $ptrn, $tag);
+                if ($class !== 'tv') {
+                    $conditions[] = $processValue;
                 } else {
-                    $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $orCondition);
+                    $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $processValue);
                 }
             }
         }
