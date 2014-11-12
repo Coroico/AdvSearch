@@ -28,8 +28,7 @@ $advsearchCorePath = $modx->getOption('advsearch.core_path', null, $defaultAdvSe
 try {
     $$asf = $modx->getService('advsearchform', 'AdvSearchForm', $advsearchCorePath . 'model/advsearch/', $scriptProperties);
 } catch (Exception $e) {
-    $modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] ' .  $e->getMessage());
-    return;
+    return $e->getMessage();
 }
 
 if (!($$asf instanceof AdvSearchForm)) {
