@@ -273,6 +273,9 @@ class AdvSearchForm extends AdvSearchUtil {
             if (!empty($googleMapMarkerWindowId)) {
                 $jsHeaderArray['gmpWin'] = $this->modx->makeUrl($googleMapMarkerWindowId);
             }
+            $jsHeaderArray['gmpZoom'] = (int) $this->modx->getOption('googleMapZoom', $this->config, 5);
+            $jsHeaderArray['gmpCenterLat'] = $this->modx->getOption('googleMapCenterLat', $this->config);
+            $jsHeaderArray['gmpCenterLong'] = $this->modx->getOption('googleMapCenterLong', $this->config);
 
             // &keyval
             $this->config['keyval'] = $this->modx->getOption('keyval', $this->config, '');

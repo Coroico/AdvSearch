@@ -5,7 +5,6 @@
  *
  * Licensed under the GPL license: http://www.gnu.org/copyleft/gpl.html
  */
-
 jQuery(function($) {
     // minimum number of characters. Should be coherent with advSearch snippet call
     var _minChars = 3;
@@ -17,25 +16,21 @@ jQuery(function($) {
 
     // Google Map
     $.fn.advSearchGMap = function(advInstance, options) {
-        var mapObj = this;
-        var gMap = null;
+        this.gMap = null;
         var _this = this;
 
-        var defaults = $.extend({
+        var settings = $.extend({}, {
             zoom: 5,
             centerLat: 0,
             centerLon: 0
-        });
+        }, options);
 
-        var settings = $.extend({}, settings, defaults, options);
-
-        _this.initialize = function() {
+        this.initialize = function() {
             var mapOptions = {
                 zoom: settings.zoom
             };
 
-            gMap = new google.maps.Map(mapObj.get(0), mapOptions);
-
+            _this.gMap = new google.maps.Map(_this.get(0), mapOptions);
             if (!gMapMarkers || gMapMarkers.length === 0) {
                 if ((settings.centerLat === 0) && (settings.centerLon === 0)) {
                     var initialLocation = new google.maps.LatLng(0, 0);
@@ -47,7 +42,7 @@ jQuery(function($) {
                         browserSupportFlag = true;
                         navigator.geolocation.getCurrentPosition(function(position) {
                             initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-                            gMap.setCenter(initialLocation);
+                            _this.gMap.setCenter(initialLocation);
                         }, function() {
                             handleNoGeolocation(browserSupportFlag);
                         });
@@ -64,18 +59,24 @@ jQuery(function($) {
                         } else {
                             alert("Your browser doesn't support geolocation.");
                         }
-                        gMap.setCenter(initialLocation);
+                        _this.gMap.setCenter(initialLocation);
                     }
                 } else {
-                    gMap.setCenter(new google.maps.LatLng(settings.centerLat, settings.centerLon));
+                    _this.gMap.setCenter(new google.maps.LatLng(settings.centerLat, settings.centerLon));
                 }
             } else {
-                var bounds = new google.maps.LatLngBounds();
-                var as = JSON.parse(advInstance);
+                var bounds = new google.maps.LatLngBounds(),
+                        as;
+                if (typeof(advInstance) !== 'object') {
+                    as = JSON.parse(advInstance);
+                } else {
+                    as = advInstance;
+                }
+                _this.gMap.markers = [];
                 $.each(gMapMarkers, function(index, item) {
                     var markerOptions = {
                         position: item['position'],
-                        map: gMap,
+                        map: _this.gMap,
                         title: item['title'],
                         urlID: item['urlID']
                     };
@@ -91,39 +92,40 @@ jQuery(function($) {
                             },
                             'dataType': 'html',
                             'success': function(data) {
-                                var infowindow = new google.maps.InfoWindow({
+                                marker.infowindow = new google.maps.InfoWindow({
                                     content: data
                                 });
-                                infowindow.open(gMap, marker);
+                                marker.infowindow.open(_this.gMap, marker);
                             }
                         });
                     });
 
                     markersArray.push(marker);
                     bounds.extend(item['position']);
+                    _this.gMap.markers[String(item['lat']) + ',' + String(item['long'])] = marker;
                 });
-                gMap.fitBounds(bounds);
+                _this.gMap.fitBounds(bounds);
             }
-
             // save the object for cleaning service
-            gMapHolder = gMap;
+            gMapHolder = _this.gMap;
+            _this.data('map', _this.gMap);
 
-            return gMap;
+            return _this;
         };
 
-        _this.getMarkers = function() {
+        this.getMarkers = function() {
             return markersArray;
         };
 
-        _this.getOptions = function() {
-            return this.settings;
+        this.getOptions = function() {
+            return _this.settings;
         };
 
-        _this.setOptions = function(settings) {
-            this.settings = $.extend({}, this.settings, settings);
+        this.setOptions = function(settings) {
+            _this.settings = $.extend({}, _this.settings, settings);
         };
 
-        return _this;
+        return this;
     };
 
     $.fn.advSearchInit = function(as) {
@@ -336,6 +338,8 @@ jQuery(function($) {
             }
             var options = {
                 position: new google.maps.LatLng(item[as['gmpLt']], item[as['gmpLn']]),
+                lat: item[as['gmpLt']],
+                long: item[as['gmpLn']],
                 title: item[as['gmpTtl']],
                 urlID: item['id']
             };
@@ -475,10 +479,17 @@ jQuery(function($) {
 
                 as.rw.hide();
                 as.rw.html(html).css('opacity', as.opc).reswinDown(as.eff);
-
                 if (as.gmp && json) {
-                    var jsonObj = JSON.parse(json);
-                    setGMapMarkers(as, jsonObj);
+                    var mapCanvas = $('#' + as.gmp);
+                    if (mapCanvas.length > 0) {
+                        var map = mapCanvas.advSearchGMap(as, {
+                            "zoom": (as.gmpZoom - 0),
+                            "centerLat": as.gmpCenterLat,
+                            "centerLong": as.gmpCenterLong
+                        });
+                        setGMapMarkers(as, JSON.parse(json));
+                        map.initialize();
+                    }
                 }
                 if (as.pgt === 1) {
                     initPageType1(as);
