@@ -6,7 +6,7 @@
  * @package 	AdvSearch
  * @author		Coroico
  *              goldsky - goldsky@virtudraft.com
- * @copyright 	Copyright (c) 2012 by Coroico <coroico@wangba.fr>
+ * @copyright 	Copyright (c) 2012 - 2015 by Coroico <coroico@wangba.fr>
  *
  * @tutorial	Class to handle hooks for AdvSearch classes
  *

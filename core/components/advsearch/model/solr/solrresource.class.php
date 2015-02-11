@@ -60,6 +60,7 @@ class SolrResource {
         $update = $this->client->createUpdate();
         $docs = array();
         foreach ($ids as $id) {
+            $id = intval($id);
             $doc = $update->createDocument();
             $resourceArray = $this->getResource($id);
             foreach ($resourceArray as $k => $v) {
@@ -105,6 +106,9 @@ class SolrResource {
         }
         if (!is_array($ids)) {
             $ids = array_map('trim', @explode(',', $ids));
+        }
+        foreach ($ids as $k => $id) {
+            $ids[$k] = intval($id);
         }
         $update = $this->client->createUpdate();
         $update->addDeleteByIds($ids);

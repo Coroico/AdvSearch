@@ -21,6 +21,14 @@
 $scriptProperties['contexts'] = $modx->getOption('contexts', $scriptProperties, $modx->context->key);
 $scriptProperties['fields'] = $modx->getOption('fields', $scriptProperties, 'pagetitle,longtitle,alias,description,introtext,content');
 
+// The first time display or not results
+$asId = filter_input(INPUT_GET, 'asId', FILTER_SANITIZE_SPECIAL_CHARS);
+$sub = filter_input(INPUT_GET, 'sub', FILTER_SANITIZE_SPECIAL_CHARS);
+$init = (!empty($asId) || !empty($sub)) ? 'all' : $scriptProperties['init'];
+if ($init !== 'all') {
+    return;
+}
+
 $as = $modx->getOption('asId', $scriptProperties, 'as0') ? $scriptProperties['asId'] : 'as0';
 $as = str_replace(' ', '', $as);
 
@@ -28,14 +36,14 @@ $defaultAdvSearchCorePath = $modx->getOption('core_path') . 'components/advsearc
 $advSearchCorePath = $modx->getOption('advsearch.core_path', null, $defaultAdvSearchCorePath);
 
 try {
-    $$as = $modx->getService('advsearch', 'AdvSearch', $advSearchCorePath . 'model/advsearch/', $scriptProperties);
+    $$as = $modx->getService('advsearchrequest', 'AdvSearchRequest', $advSearchCorePath . 'model/advsearch/', $scriptProperties);
 } catch (Exception $e) {
-    $modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] ' .  $e->getMessage());
+    $modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearchRequest] ' .  $e->getMessage());
     return;
 }
 
-if (!($$as instanceof AdvSearch)) {
-    $modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] AdvSearch class was not found.');
+if (!($$as instanceof AdvSearchRequest)) {
+    $modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearchRequest] AdvSearchRequest class was not found.');
     return false;
 }
 

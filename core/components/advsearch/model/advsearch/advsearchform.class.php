@@ -6,14 +6,14 @@
  * @package 	AdvSearch
  * @author		Coroico
  *              goldsky - goldsky@virtudraft.com
- * @copyright 	Copyright (c) 2012 by Coroico <coroico@wangba.fr>
+ * @copyright 	Copyright (c) 2012 - 2015 by Coroico <coroico@wangba.fr>
  *
  * @tutorial	Main class to display the search form
  *
  */
-include_once dirname(__FILE__) . "/advsearchutil.class.php";
+include_once dirname(__FILE__) . "/advsearch.class.php";
 
-class AdvSearchForm extends AdvSearchUtil {
+class AdvSearchForm extends AdvSearch {
 
     public function __construct(modX & $modx, array $config = array()) {
         // ajax mode parameters

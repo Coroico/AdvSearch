@@ -6,6 +6,17 @@ error_reporting(-1);
 
 define('MODX_API_MODE', true);
 include ('../../../../../index.php');
+include MODX_CORE_PATH . 'config/config.inc.php';
+
+try {
+    $db = new PDO("$database_type:host=$database_server;dbname=$dbase;charset=$database_connection_charset", "$database_user", "$database_password");
+} catch (PDOException $e) {
+    $output = json_encode(array(
+        'success' => false,
+        'message' => $e->getMessage()
+    ));
+    die($output);
+}
 
 $output = '';
 if (!isset($_GET['siteId']) || $_GET['siteId'] !== $modx->site_id) {
@@ -15,28 +26,6 @@ if (!isset($_GET['siteId']) || $_GET['siteId'] !== $modx->site_id) {
     ));
     die($output);
 }
-
-if (!isset($_GET['ids'])) {
-    $output = json_encode(array(
-        'success' => false,
-        'message' => 'IDs parameter is required'
-    ));
-    die($output);
-}
-
-$checkSnippet = $modx->getObject('modSnippet', array('name' => 'GetIds'));
-if (!$checkSnippet) {
-    $output = json_encode(array(
-        'success' => false,
-        'message' => 'Please install GetIds snippet first!'
-    ));
-    die($output);
-}
-
-$lstIds = $modx->runSnippet('GetIds', array(
-    'ids' => $_GET['ids'],
-        ));
-$lstIds = @explode(',', $lstIds);
 
 if (!file_exists(MODX_ASSETS_PATH . 'libraries/solarium/vendor/autoload.php')) {
     $output = json_encode(array(
@@ -94,32 +83,34 @@ if (!$client) {
     die($output);
 }
 
-$update = $client->createUpdate();
-
-$limit = isset($_GET['limit']) ? intval($_GET['limit']) : null;
+$limit = isset($_GET['limit']) ? intval($_GET['limit']) : 100;
 $start = isset($_GET['start']) ? intval($_GET['start']) : 0;
 $loop = isset($_GET['loop']) ? ($_GET['loop'] === 'false' ? false : true) : null;
-$reset = isset($_GET['reset']) ? ($_GET['reset'] === 'false' ? false : true) : null;
 
-if ($reset) {
-    // add the delete query and a commit command to the update query
-    $update->addDeleteQuery('id:*');
-    $update->addCommit();
+$sql = "SELECT COUNT(*) FROM `modx_advsearch_indexation`"
+        . " WHERE `engine` = 'solr' AND `is_indexed` IS NULL";
+//        . " WHERE `engine` = 'solr' AND `is_indexed` IS NULL AND `error` IS NULL";
+$stmtCount = $db->query($sql);
+$row = $stmtCount->fetch(PDO::FETCH_NUM);
+$total = $row[0];
+
+$sql = "SELECT `doc_id` FROM `modx_advsearch_indexation`"
+//        . " WHERE `engine` = 'solr' AND `is_indexed` IS NULL"
+        . " WHERE `engine` = 'solr' AND `is_indexed` IS NULL AND `error` IS NULL"
+        . " ORDER BY `doc_id` ASC"
+        . " LIMIT $start, $limit";
+$stmt = $db->query($sql);
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $lstIds[] = $row['doc_id'];
 }
-
-try {
-    // this executes the query and returns the result
-    $result = $client->update($update);
-} catch (Exception $e) {
-    $msg = 'Error connecting to Solr server: ' . $e->getMessage();
+if (empty($lstIds)) {
+    $msg = 'Error getting the result: ' . $sql;
     $output = json_encode(array(
         'success' => false,
         'message' => $msg
     ));
     die($output);
 }
-
-$docs = array();
 
 $c = $modx->newQuery('modResource');
 $c->distinct();
@@ -130,16 +121,38 @@ $c->where(array(
     'id:IN' => $lstIds
 ));
 
-$total = $modx->getCount('modResource', $c);
-
-$c->limit($limit, $start);
+//$total = $modx->getCount('modResource', $c);
+//$c->limit($limit, $start);
 $c->sortby('id', 'ASC');
 $resources = $modx->getIterator('modResource', $c);
 
 $includeTVs = isset($_GET['include_tvs']) ? ($_GET['include_tvs'] === 'false' ? false : true) : null;
 $processTVs = isset($_GET['process_tvs']) ? ($_GET['process_tvs'] === 'false' ? false : true) : null;
 
+$update = $client->createUpdate();
+
+$reset = isset($_GET['reset']) ? ($_GET['reset'] === 'false' ? false : true) : null;
+
+if ($reset) {
+    // add the delete query and a commit command to the update query
+    $update->addDeleteQuery('id:*');
+    $update->addCommit();
+
+    try {
+        // this executes the query and returns the result
+        $result = $client->update($update);
+    } catch (Exception $e) {
+        $msg = 'Error connecting to Solr server: ' . $e->getMessage();
+        $output = json_encode(array(
+            'success' => false,
+            'message' => $msg
+        ));
+        die($output);
+    }
+}
+
 $count = 0;
+$docs = array();
 foreach ($resources as $resource) {
     $resourceArray = $resource->toArray();
     $templateVars = & $resource->getMany('TemplateVars');
@@ -163,7 +176,7 @@ foreach ($resources as $resource) {
                 $k === 'publishedon' ||
                 $k === 'pub_date' ||
                 $k === 'unpub_date'
-                ) {
+        ) {
             if ($v == 0) {
                 $v = '0000-00-00T00:00:00Z';
             } else {
@@ -182,17 +195,32 @@ foreach ($resources as $resource) {
 }
 
 // add the documents and a commit command to the update query
-$update->addDocuments($docs);
+$update->addDocuments($docs, true);
 $update->addCommit();
-
 try {
     // this executes the query and returns the result
     $result = $client->update($update);
+    if ($result) {
+        foreach ($lstIds as $id) {
+            $db->exec("UPDATE `modx_advsearch_indexation` SET `is_indexed` = 1, `error` = NULL WHERE `doc_id` = $id");
+        }
+    }
+    if (($total > $start + $limit) && $loop) {
+        $nextStart = $start;
+    } else {
+        $nextStart = $total + 1; // just to prevent javascript
+    }
+    $output = json_encode(array(
+        'success' => true,
+        'message' => '<div>Update query executed - Query time: ' . $result->getQueryTime() . ' milliseconds</div>',
+        'total' => $total,
+        'nextStart' => $nextStart
+    ));
 } catch (Exception $e) {
     $msg = '<div>Error updating the data: ' . $e->getMessage() . '</div>';
     $errorContinue = isset($_GET['errorContinue']) ? ($_GET['errorContinue'] === 'false' ? false : true) : null;
-    if ($errorContinue && $loop) {
-        $nextStart = $start + $limit;
+    if ($errorContinue && ($total > $start + $limit) && $loop) {
+        $nextStart = $start + 1;
     } else {
         $nextStart = $total + 1; // just to prevent javascript
     }
@@ -202,19 +230,11 @@ try {
         'total' => $total,
         'nextStart' => $nextStart
     ));
-    die($output);
+    foreach ($lstIds as $id) {
+        $db->exec("UPDATE `modx_advsearch_indexation` SET `error` = '$msg' WHERE `doc_id` = $id");
+    }
 }
-$countIds = count($lstIds);
 
-if (($countIds > $start + $limit) && $loop) {
-    $nextStart = $start + $limit;
-} else {
-    $nextStart = $total + 1; // just to prevent javascript
-}
-$output = json_encode(array(
-    'success' => true,
-    'message' => '<div>Update query executed - Query time: ' . $result->getQueryTime() . ' milliseconds</div>',
-    'total' => $total,
-    'nextStart' => $nextStart
-        ));
+// close connection
+$db = NULL;
 die($output);

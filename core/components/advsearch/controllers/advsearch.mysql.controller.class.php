@@ -1,6 +1,6 @@
 <?php
 
-include_once dirname(__FILE__) . '/advsearchenginecontroller.class.php';
+include_once dirname(__FILE__) . '/advsearch.engine.controller.class.php';
 
 class AdvSearchMysqlController extends AdvSearchEngineController {
 
@@ -21,18 +21,14 @@ class AdvSearchMysqlController extends AdvSearchEngineController {
 
         // multiple parents support
         if (!empty($this->config['parents'])) {
-            $parentArray = explode(',', $this->config['parents']);
-            $parents = array();
-            foreach ($parentArray as $parent) {
-                $parents[] = $parent;
-            }
+            $parents = array_map('trim', @explode(',', $this->config['parents']));
             $c->where(array(
                 'modResource.parent:IN' => $parents
             ));
         }
         // multiple ids support
         if (!empty($this->config['ids'])) {
-            $ids = array_map('trim', explode(',', $this->config['ids']));
+            $ids = array_map('trim', @explode(',', $this->config['ids']));
             $c->where(array(
                 'modResource.id:IN' => $ids
             ));
@@ -128,7 +124,8 @@ class AdvSearchMysqlController extends AdvSearchEngineController {
         }
 
         // add joined resources
-//        $c = $this->_addJoinedResources($c);
+        $c = $this->addJoinedResources($c, $asContext);
+
         //============================= add pre-conditions (published, searchable, undeleted, lstIds, hideMenu, hideContainers)
         // restrict search to published, searcheable and undeleted modResource resources
         $c->andCondition(array('published' => '1', 'searchable' => '1', 'deleted' => '0'));
@@ -211,7 +208,10 @@ class AdvSearchMysqlController extends AdvSearchEngineController {
                 $collection = $this->modx->getCollection('modResource', $c);
 
                 //============================= append & render tv fields (includeTVs, withTVs)
-                $this->results = $this->appendTVsFields($collection, $asContext);
+                $this->results = $this->_appendTVsFields($collection, $asContext);
+                foreach ($this->results as $result) {
+                    $this->idResults[] = $result['id'];
+                }
             }
         } else {
             // run a new statement
@@ -227,7 +227,7 @@ class AdvSearchMysqlController extends AdvSearchEngineController {
             }
 
             //============================= prepare final results
-            $this->results = $this->prepareResults($this->results);
+            $this->results = $this->_prepareResults($this->results);
         }
 
         return $this->results;
@@ -279,6 +279,62 @@ class AdvSearchMysqlController extends AdvSearchEngineController {
         }
         unset($c);
         $this->ifDebug('Results of _runStmt: ' . print_r($results, true), __METHOD__, __FILE__, __LINE__);
+
+        return $results;
+    }
+
+    /**
+     * Prepare results
+     *
+     * @access private
+     * @param array $results array of results
+     * @param integer $offset offset of the result page
+     * @return xPDOQuery Returns the modified query
+     */
+    private function _prepareResults($results) {
+        // return search results as an associative array with id as key
+        $searchResults = array();
+        foreach ($results as $result) {
+            $index = 'as' . $result['id'];
+            $searchResults[$index] = $result;
+            $this->idResults[] = $result['id'];
+        }
+
+        // set lstIdResults
+        $lstIdResults = implode(',', $this->idResults);
+
+        $this->ifDebug('lstIdsResults: ' . $lstIdResults, __METHOD__, __FILE__, __LINE__);
+
+        return $searchResults;
+    }
+
+    /**
+     * Append & render tv fields (includeTVs, withTVs)
+     *
+     * @access private
+     * @param array of xPDOObjects $collection collection of search results
+     * @return array Returns an array of results
+     */
+    private function _appendTVsFields($collection, $asContext) {
+        $results = array();
+        $displayedFields = array_merge($asContext['mainFields'], $asContext['joinedFields']);
+        $allowedTvNames = array_merge($asContext['tvWhereFields'], $asContext['tvFields']);
+
+        if (count($allowedTvNames)) {
+            foreach ($collection as $resourceId => $resource) {
+                $result = $resource->get($displayedFields);
+                $tvs = array();
+                $templateVars = $this->modx->getCollection('modTemplateVar', array('name:IN' => $allowedTvNames));
+                foreach ($templateVars as $tv) {
+                    $tvs[$tv->get('name')] = $tv->renderOutput($result['id']);
+                }
+                $results[] = array_merge($result, $tvs);
+            }
+        } else {
+            foreach ($collection as $resourceId => $resource) {
+                $results[] = $resource->get($displayedFields);
+            }
+        }
 
         return $results;
     }

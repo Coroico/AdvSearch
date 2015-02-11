@@ -1,7 +1,8 @@
 Changelog for AdvSearch
 
-AdvSearch dev
+AdvSearch 2.0.0-dev
 -------------------
+- major refactor of class and controller files
 - [#73] Replace getMicroTime method with standart PHP microtime. getMicroTime was deleted in modx 2.3.
 - [#45] add page and totalPage placeholders
 - [#67] apply addJs=0

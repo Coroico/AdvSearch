@@ -4,7 +4,7 @@
  * @link http://wiki.apache.org/lucene-java/ImproveIndexingSpeed
  * @link http://wiki.apache.org/lucene-java/ImproveSearchingSpeed
  */
-include_once dirname(__FILE__) . '/advsearchenginecontroller.class.php';
+include_once dirname(__FILE__) . '/advsearch.engine.controller.class.php';
 
 class AdvSearchSolrController extends AdvSearchEngineController {
 
@@ -293,18 +293,21 @@ class AdvSearchSolrController extends AdvSearchEngineController {
                 /* @since 1.3 */
                 case 'MATCH':
                     $val = addslashes($val);
-                    $condition = "{$field}_s:/.*{$val}.*/"; // run regex on "string" fieldtype of field's clone instead
+                    $condition = "{$field}:/.*{$val}.*/ OR ";
+                    $condition .= "{$field}_s:/.*{$val}.*/"; // run regex on "string" fieldtype of field's clone instead
                     break;
                 case 'REGEXP': // operator with exact pattern matching. eg: ptrn= '%s[0-9]*'
                     $val = addslashes($val);
                     $ptrn = str_replace('%s', $val, $ptrn);
-                    $condition = "{$field}_s:/.*{$ptrn}.*/"; // run regex on "string" fieldtype of field's clone instead
+                    $condition = "{$field}:/.*{$ptrn}.*/ OR ";
+                    $condition .= "{$field}_s:/.*{$ptrn}.*/"; // run regex on "string" fieldtype of field's clone instead
                     break;
                 case 'QUERY':
                 default:
                     $val = addslashes($val);
                     $ptrn = str_replace('%s', $val, $ptrn);
-                    $condition = "{$field}_s:{$ptrn}";
+                    $condition = "{$field}:{$ptrn} OR ";
+                    $condition .= "{$field}_s:{$ptrn}";
                     break;
             }
         }

@@ -5,7 +5,7 @@
  * @link http://wiki.apache.org/lucene-java/ImproveSearchingSpeed
  */
 
-include_once dirname(__FILE__) . '/advsearchenginecontroller.class.php';
+include_once dirname(__FILE__) . '/advsearch.engine.controller.class.php';
 
 class AdvSearchMySQLSolrController extends AdvSearchEngineController {
 
@@ -35,7 +35,7 @@ class AdvSearchMySQLSolrController extends AdvSearchEngineController {
     }
 
     public function getResults($asContext) {
-        $mySQLControllerClass = include_once 'advsearchmysqlcontroller.class.php';
+        $mySQLControllerClass = include_once 'advsearch.mysql.controller.class.php';
         $mySQLController = new $mySQLControllerClass($this->modx, $this->config);
         $mySQLControllerContext = $asContext;
         $mySQLControllerContext['joinedFields'] = array();

@@ -1,8 +1,8 @@
 <?php
 
-include_once dirname(dirname(__FILE__)) . "/model/advsearch/advsearchutil.class.php";
+include_once dirname(dirname(__FILE__)) . "/model/advsearch/advsearch.class.php";
 
-abstract class AdvSearchEngineController extends AdvSearchUtil {
+abstract class AdvSearchEngineController extends AdvSearch {
 
     public $modx;
     public $config;
@@ -15,6 +15,7 @@ abstract class AdvSearchEngineController extends AdvSearchUtil {
     public $results = array();
     public $idResults = array();
     public $searchString;
+    public $searchTerms = array();
     public $limit;
     protected $page = 1;
     protected $queryHook = null;
@@ -66,69 +67,13 @@ abstract class AdvSearchEngineController extends AdvSearchUtil {
     }
 
     /**
-     * Prepare results
-     *
-     * @access private
-     * @param array $results array of results
-     * @param integer $offset offset of the result page
-     * @return xPDOQuery Returns the modified query
-     */
-    protected function prepareResults($results) {
-        // return search results as an associative array with id as key
-        $searchResults = array();
-        foreach ($results as $result) {
-            $index = 'as' . $result['id'];
-            $searchResults[$index] = $result;
-            $this->idResults[] = $result['id'];
-        }
-
-        // set lstIdResults
-        $lstIdResults = implode(',', $this->idResults);
-
-        $this->ifDebug('lstIdsResults: ' . $lstIdResults, __METHOD__, __FILE__, __LINE__);
-
-        return $searchResults;
-    }
-
-    /**
-     * Append & render tv fields (includeTVs, withTVs)
-     *
-     * @access private
-     * @param array of xPDOObjects $collection collection of search results
-     * @return array Returns an array of results
-     */
-    protected function appendTVsFields($collection, $asContext) {
-        $results = array();
-        $displayedFields = array_merge($asContext['mainFields'], $asContext['joinedFields']);
-        $allowedTvNames = array_merge($asContext['tvWhereFields'], $asContext['tvFields']);
-
-        if (count($allowedTvNames)) {
-            foreach ($collection as $resourceId => $resource) {
-                $result = $resource->get($displayedFields);
-                $tvs = array();
-                $templateVars = $this->modx->getCollection('modTemplateVar', array('name:IN' => $allowedTvNames));
-                foreach ($templateVars as $tv) {
-                    $tvs[$tv->get('name')] = $tv->renderOutput($result['id']);
-                }
-                $results[] = array_merge($result, $tvs);
-            }
-        } else {
-            foreach ($collection as $resourceId => $resource) {
-                $results[] = $resource->get($displayedFields);
-            }
-        }
-
-        return $results;
-    }
-
-    /**
      * Add joined resources to the main resource
      *
-     * @access private
+     * @access protected
      * @param xPDOQuery $c query in construction
      * @return xPDOQuery $c updated query
      */
-    protected function addJoinedQueryHook(xPDOQuery & $c, $asContext) {
+    protected function addJoinedResources(xPDOQuery & $c, $asContext) {
         if (empty($asContext['queryHook']['joined'])) {
             return $c;
         }
@@ -186,5 +131,7 @@ abstract class AdvSearchEngineController extends AdvSearchUtil {
                 }
             }
         }
+
+        return $c;
     }
 }

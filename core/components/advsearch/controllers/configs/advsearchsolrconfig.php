@@ -6,8 +6,10 @@ return array(
             'host' => '127.0.0.1',
             'port' => 8983,
             'path' => '/solr',
-//            'core'    => null,
-//            'timeout' => 5,
+//            'core'    => 'corename',
+//            'timeout' => 300,
+//            'username' => 'something',
+//            'password' => 'secret'
         )
     )
 );
