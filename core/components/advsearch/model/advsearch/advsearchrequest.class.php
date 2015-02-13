@@ -307,57 +307,6 @@ class AdvSearchRequest extends AdvSearch {
     }
 
     /*
-     * Valid a term as search term
-     *
-     * @access private
-     * @param string or array $term The term(s) to validate
-     * @param boolean/null $sign true if mandatory, null if optional, false if excluded
-     * @param integer $nbTerms Number of terms already processed
-     * @return boolean Returns true if valid, otherwise false.
-     */
-
-    public function validTerm($term, $type, $sign, & $nbTerms = 0, $record = true) {
-        if ($type == 'phrase') {
-            $phrase = substr($term, 1, -1); // remove beginning and end quotes
-            $phraseArray = explode(' ', $phrase);
-            foreach ($phraseArray as $word) {
-                $valid = $this->validTerm($word, 'word', $sign, $nbTerms, false);
-                if (!$valid) {
-                    return false;
-                }
-            }
-            $this->searchTerms[] = $phrase;
-
-            return true;
-        } else {
-            if (strlen($term) < $this->config['minChars']) {
-                $msgerr = $this->modx->lexicon('advsearch.minchars', array(
-                    'minterm' => $term,
-                    'minchars' => $this->config['minChars']
-                ));
-                $this->setError($msgerr);
-
-                return false;
-            }
-            $nbTerms++;
-            if ($nbTerms > $this->config['maxWords']) {
-                $msgerr = $this->modx->lexicon('advsearch.maxwords', array(
-                    'maxwords' => $this->config['maxwords']
-                ));
-                $this->setError($msgerr);
-
-                return false;
-            }
-            // record the valid search terms for futher highlighting
-            if ($record && ($sign || is_null($sign))) {
-                $this->searchTerms[] = $term;
-            }
-
-            return true;
-        }
-    }
-
-    /*
      * Returns Result info header
      *
      * @access private

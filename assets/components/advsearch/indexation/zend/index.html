@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>AdvSearch's Solr Indexation</title>
+        <title>AdvSearch's ZendSearch Indexation</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width">
         <link rel="stylesheet" href="../vendor/twbs3/css/bootstrap.min.css">
@@ -66,12 +66,12 @@
                 <div class="container">
                     <div class="row">
                         <div class="col-md-12">
-                            <h1>AdvSearch's <b>Solr</b> Indexation</h1>
+                            <h1>AdvSearch's <b>ZendSearch</b> Indexation</h1>
                             <div class="well">
                                 <p>Make sure you have these dependencies installed before continue:</p>
                                 <ol>
                                     <li><a href="http://modx.com/extras/package/getids" target="_blank">GetIds</a></li>
-                                    <li><a href="http://wiki.solarium-project.org/index.php/V3:Installation" target="_blank">Solarium library</a></li>
+                                    <li><a href="https://github.com/zendframework/ZendSearch" target="_blank">ZendSearch library</a></li>
                                 </ol>
                             </div>
                         </div>
@@ -150,22 +150,6 @@
                             <form role="form" onsubmit="return false;" id="writeIndex">
                                 <fieldset>
                                     <legend>Start Index</legend>
-                                    <div class="form-group">
-                                        <div class="row">
-                                            <label for="config_file" class="col-sm-2 control-label">Config file</label>
-                                            <div class="col-sm-6">
-                                                <input
-                                                    type="text"
-                                                    class="form-control"
-                                                    name="config_file"
-                                                    id="config_file"
-                                                    value="[[++core_path]]components/advsearch/configs/advsearchsolrconfig.php"
-                                                    placeholder="[[++core_path]]components/advsearch/configs/advsearchsolrconfig.php"
-                                                    required="required">
-                                                <small>Default is "[[++core_path]]components/advsearch/configs/advsearchsolrconfig.php"</small>
-                                            </div>
-                                        </div>
-                                    </div>
                                     <div class="form-group">
                                         <div class="row">
                                             <div class="col-md-6">

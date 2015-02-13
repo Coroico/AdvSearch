@@ -123,11 +123,9 @@ class AdvSearch {
         $init = $this->modx->getOption('init', $this->config, 'none');
         $this->config['init'] = ($init === 'all') ? 'all' : 'none';
 
-        // &libraryPath under assets [ path | 'libraries/' ]
+        // &libraryPath [ path | '{core_path}components/advsearch/libraries/' ]
         $path = $this->modx->getOption('libraryPath', $this->config, $this->modx->getOption('advsearch.core_path', null, $this->modx->getOption('core_path') . 'components/advsearch/') . 'libraries/');
         $this->config['libraryPath'] = $this->replacePropPhs($path);
-        // First make sure the Zend library is in the include path:
-        ini_set('include_path', ini_get('include_path') . PATH_SEPARATOR . $this->config['libraryPath']);
 
         /* deprecated @2.0.0 */
         // &offsetIndex [ string | 'offset' ] : The name of the REQUEST parameter to use for the pagination offset
@@ -649,4 +647,53 @@ class AdvSearch {
         return $count;
     }
 
+    /*
+     * Valid a term as search term
+     *
+     * @access private
+     * @param string or array $term The term(s) to validate
+     * @param boolean/null $sign true if mandatory, null if optional, false if excluded
+     * @param integer $nbTerms Number of terms already processed
+     * @return boolean Returns true if valid, otherwise false.
+     */
+    public function validTerm($term, $type, $sign, & $nbTerms = 0, $record = true) {
+        if ($type == 'phrase') {
+            $phrase = substr($term, 1, -1); // remove beginning and end quotes
+            $phraseArray = explode(' ', $phrase);
+            foreach ($phraseArray as $word) {
+                $valid = $this->validTerm($word, 'word', $sign, $nbTerms, false);
+                if (!$valid) {
+                    return false;
+                }
+            }
+            $this->searchTerms[] = $phrase;
+
+            return true;
+        } else {
+            if (strlen($term) < $this->config['minChars']) {
+                $msgerr = $this->modx->lexicon('advsearch.minchars', array(
+                    'minterm' => $term,
+                    'minchars' => $this->config['minChars']
+                ));
+                $this->setError($msgerr);
+
+                return false;
+            }
+            $nbTerms++;
+            if ($nbTerms > $this->config['maxWords']) {
+                $msgerr = $this->modx->lexicon('advsearch.maxwords', array(
+                    'maxwords' => $this->config['maxwords']
+                ));
+                $this->setError($msgerr);
+
+                return false;
+            }
+            // record the valid search terms for futher highlighting
+            if ($record && ($sign || is_null($sign))) {
+                $this->searchTerms[] = $term;
+            }
+
+            return true;
+        }
+    }
 }

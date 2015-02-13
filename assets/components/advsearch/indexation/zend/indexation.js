@@ -50,8 +50,6 @@ var globalLimit = 0;
 function submitForm(nextStart) {
     var sitesIDDom = $('#site_id'),
             siteID = sitesIDDom.val(),
-            configFileDom = $('#config_file'),
-            configFile = configFileDom.val(),
             includeTVsDom = $('#include_tvs'),
             includeTVs = includeTVsDom.prop('checked'),
             processTVsDom = $('#process_tvs'),
@@ -88,11 +86,6 @@ function submitForm(nextStart) {
         sitesIDDom.parent().addClass('has-error');
     }
 
-    configFileDom.parent().removeClass('has-error');
-    if (configFile.length === 0) {
-        configFileDom.parent().addClass('has-error');
-    }
-
     if (siteID.length === 0) {
         return false;
     }
@@ -105,7 +98,6 @@ function submitForm(nextStart) {
         url: 'writeindex.php',
         data: {
             siteId: siteID,
-            config_file: configFile,
             include_tvs: includeTVs,
             process_tvs: processTVs,
             loop: loop,

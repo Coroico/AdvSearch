@@ -66,7 +66,7 @@ if (!empty($lstIds)) {
         $check->execute();
         $check = $check->fetch(PDO::FETCH_ASSOC);
         if (empty($check)) {
-            $db->exec("INSERT INTO {$table_prefix}advsearch_indexation(doc_id, engine) VALUES ('$id', 'solr')");
+            $db->exec("INSERT INTO {$table_prefix}advsearch_indexation(doc_id, engine) VALUES ('$id', 'zend')");
         }
     }
 }

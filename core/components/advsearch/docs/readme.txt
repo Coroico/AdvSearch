@@ -1,7 +1,9 @@
 --------------------
 Third party component: AdvSearch
 --------------------
-Author: Coroico <coroico@wangba.fr>
+Author:
+- Coroico <coroico@wangba.fr>
+- goldsky <goldsky@virtudraft.com>
 
 Dynamic content search add-on that supports results highlighting, faceted search, ajax mode and search content in custom packages.
 

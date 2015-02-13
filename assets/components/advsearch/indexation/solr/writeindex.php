@@ -83,18 +83,22 @@ if (!$client) {
     die($output);
 }
 
+$reset = isset($_GET['reset']) ? ($_GET['reset'] === 'false' ? false : true) : null;
+if ($reset) {
+    $db->exec("UPDATE `{$table_prefix}advsearch_indexation` SET `is_indexed` = NULL, `error` = NULL WHERE `engine` = 'solr'");
+}
 $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 100;
 $start = isset($_GET['start']) ? intval($_GET['start']) : 0;
 $loop = isset($_GET['loop']) ? ($_GET['loop'] === 'false' ? false : true) : null;
 
-$sql = "SELECT COUNT(*) FROM `modx_advsearch_indexation`"
+$sql = "SELECT COUNT(*) FROM `{$table_prefix}advsearch_indexation`"
         . " WHERE `engine` = 'solr' AND `is_indexed` IS NULL";
 //        . " WHERE `engine` = 'solr' AND `is_indexed` IS NULL AND `error` IS NULL";
 $stmtCount = $db->query($sql);
 $row = $stmtCount->fetch(PDO::FETCH_NUM);
 $total = $row[0];
 
-$sql = "SELECT `doc_id` FROM `modx_advsearch_indexation`"
+$sql = "SELECT `doc_id` FROM `{$table_prefix}advsearch_indexation`"
 //        . " WHERE `engine` = 'solr' AND `is_indexed` IS NULL"
         . " WHERE `engine` = 'solr' AND `is_indexed` IS NULL AND `error` IS NULL"
         . " ORDER BY `doc_id` ASC"
@@ -131,8 +135,6 @@ $processTVs = isset($_GET['process_tvs']) ? ($_GET['process_tvs'] === 'false' ? 
 
 $update = $client->createUpdate();
 
-$reset = isset($_GET['reset']) ? ($_GET['reset'] === 'false' ? false : true) : null;
-
 if ($reset) {
     // add the delete query and a commit command to the update query
     $update->addDeleteQuery('id:*');
@@ -149,6 +151,7 @@ if ($reset) {
         ));
         die($output);
     }
+    $db->exec("UPDATE `{$table_prefix}advsearch_indexation` SET `is_indexed` = NULL, `error` = NULL WHERE `engine` = 'solr'");
 }
 
 $count = 0;
@@ -202,7 +205,7 @@ try {
     $result = $client->update($update);
     if ($result) {
         foreach ($lstIds as $id) {
-            $db->exec("UPDATE `modx_advsearch_indexation` SET `is_indexed` = 1, `error` = NULL WHERE `doc_id` = $id");
+            $db->exec("UPDATE `{$table_prefix}advsearch_indexation` SET `is_indexed` = 1, `error` = NULL WHERE `doc_id` = $id");
         }
     }
     if (($total > $start + $limit) && $loop) {
@@ -231,7 +234,7 @@ try {
         'nextStart' => $nextStart
     ));
     foreach ($lstIds as $id) {
-        $db->exec("UPDATE `modx_advsearch_indexation` SET `error` = '$msg' WHERE `doc_id` = $id");
+        $db->exec("UPDATE `{$table_prefix}advsearch_indexation` SET `error` = '$msg' WHERE `doc_id` = $id");
     }
 }
 
