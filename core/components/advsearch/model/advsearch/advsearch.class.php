@@ -714,6 +714,8 @@ class AdvSearch {
             }
             $string = preg_replace('/' . $pattern . '/i', '<' . $tag . ' class="' . $class . ' ' . $class . '-' . $rank . '">$0</' . $tag . '>', $string);
         }
+        // @todo: give space to inline multiple searchterms
+
         return $string;
     }
 

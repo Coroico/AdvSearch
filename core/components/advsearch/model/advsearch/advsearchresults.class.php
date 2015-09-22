@@ -336,6 +336,7 @@ class AdvSearchResults extends AdvSearch {
      * @param AdvSearchResults $asr a AdvSearchResult object
      * @return string Returns search results output
      */
+
     public function renderOutput($results = array()) {
         if (empty($results)) {
             return false;
@@ -360,7 +361,7 @@ class AdvSearchResults extends AdvSearch {
                 }
 
                 $extracts = $this->_getExtracts(
-                        $text, $this->nbExtracts, $this->config['extractLength'], $this->searchTerms, $this->config['extractTpl'], $ellipsis = '...'
+                    $text, $this->nbExtracts, $this->config['extractLength'], $this->searchTerms, $this->config['extractTpl'], $ellipsis = '...'
                 );
             } else {
                 $extracts = '';
@@ -672,7 +673,7 @@ class AdvSearchResults extends AdvSearch {
                 $parameters = array_merge($idParameters, $qParameters);
 
                 if ($i <= $this->config['paging3OuterRange'] ||
-                        $i > ($nbPages - $this->config['paging3OuterRange'])
+                    $i > ($nbPages - $this->config['paging3OuterRange'])
                 ) {
                     $paging3[] = $this->_formatPaging3($i, $id, $parameters);
                 } else {
@@ -681,18 +682,18 @@ class AdvSearchResults extends AdvSearch {
                     }
                     // left splitter
                     if ($i === ($this->config['paging3OuterRange'] + 1) &&
-                            $this->page >= $maxOuterRange) {
+                        $this->page >= $maxOuterRange) {
                         $paging3[] = $this->processElementTags($this->parseTpl($this->config['paging3RangeSplitterTpl']));
                     }
 
                     if ($i <= ($this->page + $middleWingRange) &&
-                            $i >= ($this->page - $middleWingRange)) {
+                        $i >= ($this->page - $middleWingRange)) {
                         $paging3[] = $this->_formatPaging3($i, $id, $parameters);
                     }
 
                     // right splitter
                     if ($i === ($nbPages - $this->config['paging3OuterRange']) &&
-                            $this->page <= ($nbPages - $maxOuterRange) + 1) {
+                        $this->page <= ($nbPages - $maxOuterRange) + 1) {
                         $paging3[] = $this->processElementTags($this->parseTpl($this->config['paging3RangeSplitterTpl']));
                     }
                 }
@@ -700,10 +701,10 @@ class AdvSearchResults extends AdvSearch {
 
             $paging3 = @implode($this->config['paging3Separator'], $paging3);
             $phs = $this->setPlaceholders(array(
-                        'previouslink' => $previouslink,
-                        'paging3' => $paging3,
-                        'nextlink' => $nextlink,
-            ), $this->config['placeholderPrefix']);
+                'previouslink' => $previouslink,
+                'paging3' => $paging3,
+                'nextlink' => $nextlink,
+                ), $this->config['placeholderPrefix']);
             $output = $this->processElementTags($this->parseTpl($this->config['paging3Tpl'], $phs));
         }
         return $output;
@@ -781,6 +782,12 @@ class AdvSearchResults extends AdvSearch {
         $extracts = array();
         $extractLength2 = $extractLength / 2;
         $rank = 0;
+
+        foreach ($searchTerms as $s) {
+            $s = trim($s);
+            $x = preg_split('/\s/', $s);
+            $searchTerms = array_merge($x);
+        }
 
         // search the position of all search terms
         foreach ($searchTerms as $searchTerm) {
@@ -867,7 +874,7 @@ class AdvSearchResults extends AdvSearch {
             if ($this->config['highlightResults']) {
                 $rank = $extracts[$i]['rank'];
                 $searchTerm = $extracts[$i]['searchTerm'];
-                $extract = $this->addHighlighting($extract, (array)$searchTerm, $highlightClass, $highlightTag, $rank);
+                $extract = $this->addHighlighting($extract, (array) $searchTerm, $highlightClass, $highlightTag, $rank);
             }
             $extractPh = array(
                 'extract' => $extracts[$i]['etcLeft'] . $extract . $extracts[$i]['etcRight']
