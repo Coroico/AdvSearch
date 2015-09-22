@@ -144,7 +144,7 @@ class AdvSearch {
         $this->config['toPlaceholder'] = $this->modx->getOption('toPlaceholder', $this->config, '');
 
         // &placeholderPrefix [ string | '' ]
-        $this->config['placeholderPrefix'] = $this->modx->getOption('placeholderPrefix', $this->config, '');
+        $this->config['placeholderPrefix'] = $this->modx->getOption('placeholderPrefix', $this->config, 'advsearch');
 
         // &addCss - [ 0 | 1 ]
         $this->config['addCss'] = (bool)(int) $this->modx->getOption('addCss', $this->config, 1);

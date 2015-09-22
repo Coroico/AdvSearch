@@ -1,8 +1,8 @@
 <p class="advsea-morelink">
     <a
-        id="[[+asId]]_advsea-morelink"
+        id="[[+advsearch.asId]]_advsea-morelink"
         title="[[%advsearch.more_results? &namespace=`advsearch` &topic=`default`]]"
-        href="[[+moreLink]]">
+        href="[[+advsearch.moreLink]]">
         - [[%advsearch.more_results? &namespace=`advsearch` &topic=`default`]] -
     </a>
 </p>

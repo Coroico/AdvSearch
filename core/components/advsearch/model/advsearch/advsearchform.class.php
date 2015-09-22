@@ -138,6 +138,7 @@ class AdvSearchForm extends AdvSearch {
         // &tpl [ chunk name | 'AdvSearchForm' ]
         $this->config['tpl'] = $this->modx->getOption('tpl', $this->config, 'AdvSearchForm');
 
+        $placeholders = $this->setPlaceholders($placeholders, $this->config['placeholderPrefix']);
         // set the form into a placeholder if requested
         $output = $this->processElementTags($this->parseTpl($this->config['tpl'], $placeholders));
         if (!empty($this->config['toPlaceholder'])) {

@@ -1,1 +1,1 @@
-<p class="advsea-extract">[[+extract]]</p>
+<p class="advsea-extract">[[+advsearch.extract]]</p>

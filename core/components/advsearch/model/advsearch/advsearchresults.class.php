@@ -341,7 +341,6 @@ class AdvSearchResults extends AdvSearch {
             return false;
         }
 
-        $pageResultsCount = count($results);
         $this->searchTerms = array_unique($this->searchTerms);
         $this->displayedFields = array_merge($this->mainFields, $this->tvFields, $this->joinedFields);
         $this->_loadOutputProperties();
@@ -379,6 +378,7 @@ class AdvSearchResults extends AdvSearch {
             if ($this->config['toArray']) {
                 $resultsArray[] = $result;
             } else {
+                $result = $this->setPlaceholders($result, $this->config['placeholderPrefix']);
                 $resultsOutput .= $this->processElementTags($this->parseTpl($this->config['tpl'], $result));
             }
             $idx++;
@@ -387,7 +387,6 @@ class AdvSearchResults extends AdvSearch {
         $resultsPh = array(
             'paging' => $pagingOutput,
             'pagingType' => $this->config['pagingType'],
-            'moreResults' => $moreLinkOutput
         );
         if ($this->config['toArray']) {
             $resultsPh['properties'] = $this->config;
@@ -395,6 +394,7 @@ class AdvSearchResults extends AdvSearch {
             $output = '<pre class="advsea-code">' . print_r($resultsPh, 1) . '</pre>';
         } else {
             $resultsPh['results'] = $resultsOutput;
+            $resultsPh = $this->setPlaceholders($resultsPh, $this->config['placeholderPrefix']);
             $output = $this->processElementTags($this->parseTpl($this->config['containerTpl'], $resultsPh));
         }
 
@@ -590,7 +590,7 @@ class AdvSearchResults extends AdvSearch {
             'totalPage' => $nbPages, // by convention
         );
 
-        $this->modx->setPlaceholders($pagePh, $this->config['placeholderPrefix']);
+//        $this->modx->setPlaceholders($pagePh, $this->config['placeholderPrefix']);
 
         $qParameters = array();
         if (!empty($this->queryHook['requests'])) {
@@ -599,8 +599,6 @@ class AdvSearchResults extends AdvSearch {
 
         if ($this->config['pagingType'] == 1) {
             // pagination type 1
-            $pagePh = array();
-
             $previousCount = ($this->page - 1) * $this->config['perPage'];
             $pagePh['previouslink'] = '';
             if ($previousCount > 0) {
@@ -619,28 +617,31 @@ class AdvSearchResults extends AdvSearch {
                 $pagePh['nextlink'] = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
             }
 
+            $pagePh = $this->setPlaceholders($pagePh, $this->config['placeholderPrefix']);
             $output = $this->processElementTags($this->parseTpl($this->config['paging1Tpl'], $pagePh));
         } elseif ($this->config['pagingType'] == 2) {
             // pagination type 2
             $paging2 = array();
             for ($i = 0; $i < $nbPages; ++$i) {
-                $pagePh = array();
                 $pagePh['text'] = $i + 1;
                 $pagePh['separator'] = $this->config['pagingSeparator'];
                 $pagePh['page'] = $i + 1;
                 if ($this->page == $i + 1) {
                     $pagePh['link'] = $i + 1;
+                    $pagePh = $this->setPlaceholders($pagePh, $this->config['placeholderPrefix']);
                     $paging2[] = $this->processElementTags($this->parseTpl($this->config['currentPageTpl'], $pagePh));
                 } else {
                     $parameters = array_merge($idParameters, $qParameters, array(
                         $this->config['pageIndex'] => $pagePh['page']
                     ));
                     $pagePh['link'] = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
+                    $pagePh = $this->setPlaceholders($pagePh, $this->config['placeholderPrefix']);
                     $paging2[] = $this->processElementTags($this->parseTpl($this->config['pageTpl'], $pagePh));
                 }
             }
             $paging2 = @implode($this->config['pagingSeparator'], $paging2);
-            $output = $this->processElementTags($this->parseTpl($this->config['paging2Tpl'], array('paging2' => $paging2)));
+            $phs = $this->setPlaceholders(array('paging2' => $paging2), $this->config['placeholderPrefix']);
+            $output = $this->processElementTags($this->parseTpl($this->config['paging2Tpl'], $phs));
         } elseif ($this->config['pagingType'] == 3) {
             // pagination type 3
             $paging3 = array();
@@ -698,11 +699,12 @@ class AdvSearchResults extends AdvSearch {
             } // for ($i = 1; $i <= $nbPages; ++$i)
 
             $paging3 = @implode($this->config['paging3Separator'], $paging3);
-            $output = $this->processElementTags($this->parseTpl($this->config['paging3Tpl'], array(
+            $phs = $this->setPlaceholders(array(
                         'previouslink' => $previouslink,
                         'paging3' => $paging3,
                         'nextlink' => $nextlink,
-            )));
+            ), $this->config['placeholderPrefix']);
+            $output = $this->processElementTags($this->parseTpl($this->config['paging3Tpl'], $phs));
         }
         return $output;
     }
@@ -715,46 +717,19 @@ class AdvSearchResults extends AdvSearch {
 
         if ($this->page == $idx) {
             $pagePh['link'] = $idx;
+            $pagePh = $this->setPlaceholders($pagePh, $this->config['placeholderPrefix']);
             $output = $this->processElementTags($this->parseTpl($this->config['paging3CurrentPageTpl'], $pagePh));
         } else {
             $parameters = array_merge($parameters, array(
                 $this->config['pageIndex'] => $idx
             ));
             $pagePh['link'] = $this->modx->makeUrl($docId, '', $parameters, $this->config['urlScheme']);
+            $pagePh = $this->setPlaceholders($pagePh, $this->config['placeholderPrefix']);
             $output = $this->processElementTags($this->parseTpl($this->config['paging3PageLinkTpl'], $pagePh));
         }
 
         return $output;
     }
-
-    /*
-     * Returns "More results" link
-     *
-     * @access private
-     * @param string $searchString The search string
-     * @param integer $resultsCount The number of results found
-     * @param integer $offset The offset of the result page
-     * @param integer $pageResultsCount The number of results for the current page
-     * @return string Returns "More results" link
-     */
-//    private function _getMoreLink() {
-//        $output = '';
-//        if ($this->config['moreResults']) {
-//            $idParameters = $this->modx->request->getParameters();
-//            $qParameters = array();
-//            if (!empty($this->queryHook['requests'])) {
-//                $qParameters = $this->queryHook['requests'];
-//            }
-//            $parameters = array_merge($idParameters, $qParameters);
-//            $id = $this->config['moreResults'];
-//            $linkPh = array(
-//                'asId' => $this->config['asId'],
-//                'moreLink' => $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme'])
-//            );
-//            $output = $this->processElementTags($this->parseTpl($this->config['moreResultsTpl'], $linkPh));
-//        }
-//        return $output;
-//    }
 
     /*
      * Returns extracts with highlighted searchterms
@@ -797,8 +772,9 @@ class AdvSearchResults extends AdvSearch {
             } else {
                 $intro = '';
             }
+            $phs = $this->setPlaceholders(array('extract' => $intro), $this->config['placeholderPrefix']);
 
-            return $this->processElementTags($this->parseTpl($tpl, array('extract' => $intro)));
+            return $this->processElementTags($this->parseTpl($tpl, $phs));
         }
 
         // get extracts
@@ -898,27 +874,10 @@ class AdvSearchResults extends AdvSearch {
             $extractPh = array(
                 'extract' => $extracts[$i]['etcLeft'] . $extract . $extracts[$i]['etcRight']
             );
+            $extractPh = $this->setPlaceholders($extractPh, $this->config['placeholderPrefix']);
             $output .= $this->processElementTags($this->parseTpl($tpl, $extractPh));
         }
         return $output;
     }
-//
-//    /**
-//     * Adds highlighting to the passed string
-//     *
-//     * @access private
-//     * @param string $searchString The search string
-//     * @param array $searchTerms The searched terms
-//     * @param string $class The class name to use for highlight the terms found
-//     * @param string $tag The html tag name to use to wrap the term found
-//     * @return string Returns highlighted search string
-//     */
-//    private function _addHighlighting($string, array $searchTerms = array(), $class = 'advsea-highlight', $tag = 'span') {
-//        foreach ($searchTerms as $key => $value) {
-//            $pattern = preg_quote($value);
-//            $string = preg_replace('/' . $pattern . '/i', '<' . $tag . ' class="' . $class . ' ' . $class . '-' . ($key + 1) . '">$0</' . $tag . '>', $string);
-//        }
-//        return $string;
-//    }
 
 }

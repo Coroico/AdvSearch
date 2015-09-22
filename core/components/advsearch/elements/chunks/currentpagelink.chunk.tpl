@@ -1,1 +1,1 @@
-<span class="advsea-page advsea-current-page"> [[+text]] </span>
+<span class="advsea-page advsea-current-page"> [[+advsearch.text]] </span>

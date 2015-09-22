@@ -217,7 +217,7 @@ class AdvSearchRequest extends AdvSearch {
             'total' => $outputCount,
             'etime' => $this->getElapsedTime(),
         );
-        $this->modx->setPlaceholders($placeholders, $this->config['placeholderPrefix']);
+        $this->modx->toPlaceholders($placeholders, $this->config['placeholderPrefix']);
 
         if (!empty($this->config['toPlaceholder'])) {
             $this->modx->setPlaceholder($this->config['toPlaceholder'], $output);
@@ -380,11 +380,11 @@ class AdvSearchRequest extends AdvSearch {
      * @param string $tag The html tag name to use to wrap the term found
      * @return string Returns highlighted search string
      */
-    private function _addHighlighting($string, array $searchTerms = array(), $class = 'advsea-highlight', $tag = 'span') {
+    private function _addHighlighting($searchString, array $searchTerms = array(), $class = 'advsea-highlight', $tag = 'span') {
         foreach ($searchTerms as $key => $value) {
             $pattern = preg_quote($value);
-            $string = preg_replace('/' . $pattern . '/i', '<' . $tag . ' class="' . $class . ' ' . $class . '-' . ($key + 1) . '">$0</' . $tag . '>', $string);
+            $searchString = preg_replace('/' . $pattern . '/i', '<' . $tag . ' class="' . $class . ' ' . $class . '-' . ($key + 1) . '">$0</' . $tag . '>', $searchString);
         }
-        return $string;
+        return $searchString;
     }
 }

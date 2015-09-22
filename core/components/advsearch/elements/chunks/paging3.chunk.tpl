@@ -1,17 +1,17 @@
 <span class="advsea-result-pages">[[%advsearch.result_pages? &namespace=`advsearch` &topic=`default`]]</span>
-[[+previouslink:isnot=``:then=`
+[[+advsearch.previouslink:isnot=``:then=`
     <span class="advsea-previous">
-        <a href="[[+previouslink]]">
+        <a href="[[+advsearch.previouslink]]">
             [[%advsearch.previous? &namespace=`advsearch` &topic=`default`]]
         </a>
     </span>
 `:else=`
     <span class="advsea-current-page">[[%advsearch.previous? &namespace=`advsearch` &topic=`default`]]</span>
 `]]
-[[+paging3]]
-[[+nextlink:isnot=``:then=`
+[[+advsearch.paging3]]
+[[+advsearch.nextlink:isnot=``:then=`
     <span class="advsea-next">
-        <a href="[[+nextlink]]">
+        <a href="[[+advsearch.nextlink]]">
             [[%advsearch.next? &namespace=`advsearch` &topic=`default`]]
         </a>
     </span>
