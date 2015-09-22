@@ -749,9 +749,6 @@ class AdvSearchResults extends AdvSearch {
 
     private function _getExtracts($text, $nbext = 1, $extractLength = 200, $searchTerms = array(), $tpl = '', $ellipsis = '...') {
 
-$this->modx->log(modX::LOG_LEVEL_ERROR, __FILE__ . ' ');
-$this->modx->log(modX::LOG_LEVEL_ERROR, __METHOD__ . ' ');
-$this->modx->log(modX::LOG_LEVEL_ERROR, __LINE__ . ' $text ' . $text);
         mb_internal_encoding($this->config['charset']); // set internal encoding to UTF-8 for multi-bytes functions
 
         $text = trim(preg_replace('/\s+/', ' ', $this->sanitize($text)));
