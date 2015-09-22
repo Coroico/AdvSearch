@@ -325,7 +325,7 @@ class AdvSearchRequest extends AdvSearch {
             }
             $output = $this->modx->lexicon($lexicon, array(
                 'count' => $resultsCount,
-                'text' => !empty($this->config['highlightResults']) ? $this->_addHighlighting($this->searchString, $this->searchTerms, $this->config['highlightClass'], $this->config['highlightTag']) : $this->searchString
+                'text' => !empty($this->config['highlightResults']) ? $this->addHighlighting($this->searchString, $this->searchTerms, $this->config['highlightClass'], $this->config['highlightTag']) : $this->searchString
             ));
         } else {
             if ($resultsCount > 1) {
@@ -370,21 +370,4 @@ class AdvSearchRequest extends AdvSearch {
         return $output;
     }
 
-    /**
-     * Adds highlighting to the passed string
-     *
-     * @access private
-     * @param string $searchString The search string
-     * @param array $searchTerms The searched terms
-     * @param string $class The class name to use for highlight the terms found
-     * @param string $tag The html tag name to use to wrap the term found
-     * @return string Returns highlighted search string
-     */
-    private function _addHighlighting($searchString, array $searchTerms = array(), $class = 'advsea-highlight', $tag = 'span') {
-        foreach ($searchTerms as $key => $value) {
-            $pattern = preg_quote($value);
-            $searchString = preg_replace('/' . $pattern . '/i', '<' . $tag . ' class="' . $class . ' ' . $class . '-' . ($key + 1) . '">$0</' . $tag . '>', $searchString);
-        }
-        return $searchString;
-    }
 }

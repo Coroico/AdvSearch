@@ -696,4 +696,25 @@ class AdvSearch {
             return true;
         }
     }
+
+    /**
+     * Adds highlighting to the passed string
+     *
+     * @param   string  $string         The string
+     * @param   array   $searchTerms    The searched terms
+     * @param   string  $class          The class name to use for highlight the terms found
+     * @param   string  $tag            The html tag name to use to wrap the term found
+     * @return  string  Returns highlighted string
+     */
+    public function addHighlighting($string, array $searchTerms = array(), $class = 'advsea-highlight', $tag = 'span', $rank = null) {
+        foreach ($searchTerms as $key => $value) {
+            $pattern = preg_quote($value, '/');
+            if (empty($rank)) {
+                $rank = ($key + 1);
+            }
+            $string = preg_replace('/' . $pattern . '/i', '<' . $tag . ' class="' . $class . ' ' . $class . '-' . $rank . '">$0</' . $tag . '>', $string);
+        }
+        return $string;
+    }
+
 }

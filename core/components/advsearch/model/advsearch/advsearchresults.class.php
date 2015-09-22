@@ -749,6 +749,9 @@ class AdvSearchResults extends AdvSearch {
 
     private function _getExtracts($text, $nbext = 1, $extractLength = 200, $searchTerms = array(), $tpl = '', $ellipsis = '...') {
 
+$this->modx->log(modX::LOG_LEVEL_ERROR, __FILE__ . ' ');
+$this->modx->log(modX::LOG_LEVEL_ERROR, __METHOD__ . ' ');
+$this->modx->log(modX::LOG_LEVEL_ERROR, __LINE__ . ' $text ' . $text);
         mb_internal_encoding($this->config['charset']); // set internal encoding to UTF-8 for multi-bytes functions
 
         $text = trim(preg_replace('/\s+/', ' ', $this->sanitize($text)));
@@ -867,9 +870,7 @@ class AdvSearchResults extends AdvSearch {
             if ($this->config['highlightResults']) {
                 $rank = $extracts[$i]['rank'];
                 $searchTerm = $extracts[$i]['searchTerm'];
-                $pattern = '#' . preg_quote($searchTerm, '/') . '#i';
-                $subject = '<' . $highlightTag . ' class="' . $highlightClass . ' ' . $highlightClass . '-' . $rank . '">\0</' . $highlightTag . '>';
-                $extract = preg_replace($pattern, $subject, $extract);
+                $extract = $this->addHighlighting($extract, (array)$searchTerm, $highlightClass, $highlightTag, $rank);
             }
             $extractPh = array(
                 'extract' => $extracts[$i]['etcLeft'] . $extract . $extracts[$i]['etcRight']
@@ -877,6 +878,7 @@ class AdvSearchResults extends AdvSearch {
             $extractPh = $this->setPlaceholders($extractPh, $this->config['placeholderPrefix']);
             $output .= $this->processElementTags($this->parseTpl($tpl, $extractPh));
         }
+
         return $output;
     }
 
