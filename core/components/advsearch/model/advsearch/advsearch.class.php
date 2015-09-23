@@ -712,9 +712,8 @@ class AdvSearch {
             if (empty($rank)) {
                 $rank = ($key + 1);
             }
-            $string = preg_replace('/' . $pattern . '/i', '<' . $tag . ' class="' . $class . ' ' . $class . '-' . $rank . '">$0</' . $tag . '>', $string);
+            $string = preg_replace('/(\s*)(' . $pattern . ')(\s*)/i', '<' . $tag . ' class="' . $class . ' ' . $class . '-' . $rank . '">$0</' . $tag . '>', $string);
         }
-        // @todo: give space to inline multiple searchterms
 
         return $string;
     }
