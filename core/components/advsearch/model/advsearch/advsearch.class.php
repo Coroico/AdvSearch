@@ -135,6 +135,12 @@ class AdvSearch {
         // &pageIndex [ string | 'page' ] : The name of the REQUEST parameter to use for the pagination page
         $this->config['pageIndex'] = $this->modx->getOption('pageIndex', $this->config, 'page');
 
+        // &output [ 'json' | 'html' | 'ids' | comma separated outputs ]
+        $this->config['output'] = $this->modx->getOption('output', $this->config, 'html');
+        if (empty($this->config['output'])) {
+            $this->config['output'] = 'html';
+        }
+
         // &searchIndex [ string | 'search' ]
         $this->config['searchIndex'] = $this->modx->getOption('searchIndex', $this->config, 'search');
 
