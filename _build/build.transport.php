@@ -191,6 +191,11 @@ if ($hasPlugins) {
         xPDOTransport::UPDATE_OBJECT => true,
         xPDOTransport::UNIQUE_KEY => 'name',
     );
+    $attr[xPDOTransport::RELATED_OBJECT_ATTRIBUTES]['PluginEvents'] = array(
+        xPDOTransport::PRESERVE_KEYS => true,
+        xPDOTransport::UPDATE_OBJECT => false,
+        xPDOTransport::UNIQUE_KEY => array('pluginid', 'event'),
+    );
 }
 
 /* create a vehicle for the category and all the things
