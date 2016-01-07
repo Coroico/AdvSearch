@@ -1,6 +1,6 @@
 Changelog for AdvSearch
 
-AdvSearch 2.0.0-dev
+AdvSearch 2.0.0-beta1
 -------------------
 - apply placeholder's prefix in all chunks
 - major refactor of class and controller files
