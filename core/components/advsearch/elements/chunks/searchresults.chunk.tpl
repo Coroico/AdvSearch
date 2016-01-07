@@ -1,7 +1,5 @@
-<p class="advsea-results">[[+resultInfo]] - [[%advsearch.elapsed_time? &namespace=`advsearch` &topic=`default`]] [[+etime]]</p>
-<div class="advsea-paging[[+pagingType]]">[[+paging]]</div>
+<div class="advsea-paging[[+advsearch.pagingType]]">[[+advsearch.paging]]</div>
 <div class="advsea-results-list">
-    [[+results]]
+    [[+advsearch.results]]
 </div>
-<div class="advsea-paging[[+pagingType]]">[[+paging]]</div>
-[[+moreResults]]
+<div class="advsea-paging[[+advsearch.pagingType]]">[[+advsearch.paging]]</div>

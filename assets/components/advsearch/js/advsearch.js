@@ -1,27 +1,141 @@
 /*
- * advsearch 1.0.0 - package AdvSearch - JQuery 1.7.1
- * author: Coroico - www.modx.wangba.fr - 30/12/2011
+ * advsearch 1.0.0 - package AdvSearch - jQuery 1.10.2
+ * author:  Coroico - www.revo.wangba.fr - 15/05/2012
+ *          goldsky - goldsky@virtudraft.com - 23/12/2013
  *
  * Licensed under the GPL license: http://www.gnu.org/copyleft/gpl.html
  */
-
-// set the folder location to the correct location of advsearch scripts
-var _basejs = 'assets/components/advsearch/js/';
-
-// set the loading and the close image to the correct location for you
-var _close = _basejs + 'images/close2.png';  // close image
-var _closeAlt = 'close search';
-var _load = _basejs + 'images/indicator.white.gif'; // loading image
-var _loadAlt = 'loading';
-
-// minimum number of characters. Should be coherent with advSearch snippet call
-var _minChars = 3;
-
 jQuery(function($) {
+    // minimum number of characters. Should be coherent with advSearch snippet call
+    var _minChars = 3;
+    var blockHistoryEvent = true;
+    var gMapMarkers = [];
+    var markersArray = [];
+    var gMapHolder;
+    var searchTracker = [];
 
-    $.fn.reswinUp = function(e) {
+    // Google Map
+    $.fn.advSearchGMap = function(advInstance, options) {
+        this.gMap = null;
+        var _this = this;
+
+        var settings = $.extend({}, {
+            zoom: 5,
+            centerLat: 0,
+            centerLon: 0
+        }, options);
+
+        this.initialize = function() {
+            var mapOptions = {
+                zoom: settings.zoom
+            };
+
+            _this.gMap = new google.maps.Map(_this.get(0), mapOptions);
+            if (!gMapMarkers || gMapMarkers.length === 0) {
+                if ((settings.centerLat === 0) && (settings.centerLon === 0)) {
+                    var initialLocation = new google.maps.LatLng(0, 0);
+                    var browserSupportFlag = new Boolean();
+
+                    // https://developers.google.com/maps/articles/geolocation
+                    // Try W3C Geolocation (Preferred)
+                    if (navigator.geolocation) {
+                        browserSupportFlag = true;
+                        navigator.geolocation.getCurrentPosition(function(position) {
+                            initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+                            _this.gMap.setCenter(initialLocation);
+                        }, function() {
+                            handleNoGeolocation(browserSupportFlag);
+                        });
+                    }
+                    // Browser doesn't support Geolocation
+                    else {
+                        browserSupportFlag = false;
+                        handleNoGeolocation(browserSupportFlag);
+                    }
+
+                    function handleNoGeolocation(errorFlag) {
+                        if (errorFlag === true) {
+                            alert("Geolocation service failed.");
+                        } else {
+                            alert("Your browser doesn't support geolocation.");
+                        }
+                        _this.gMap.setCenter(initialLocation);
+                    }
+                } else {
+                    _this.gMap.setCenter(new google.maps.LatLng(settings.centerLat, settings.centerLon));
+                }
+            } else {
+                var bounds = new google.maps.LatLngBounds(),
+                        as;
+                if (typeof(advInstance) !== 'object') {
+                    as = JSON.parse(advInstance);
+                } else {
+                    as = advInstance;
+                }
+                _this.gMap.markers = [];
+                $.each(gMapMarkers, function(index, item) {
+                    var markerOptions = {
+                        position: item['position'],
+                        map: _this.gMap,
+                        title: item['title'],
+                        urlID: item['urlID']
+                    };
+
+                    var marker = new google.maps.Marker(markerOptions);
+
+                    google.maps.event.addListener(marker, 'click', function(event) {
+                        $.ajax({
+                            url: as.gmpWin,
+                            cache: false,
+                            data: {
+                                urlID: item['urlID']
+                            },
+                            'dataType': 'html',
+                            'success': function(data) {
+                                marker.infowindow = new google.maps.InfoWindow({
+                                    content: data
+                                });
+                                marker.infowindow.open(_this.gMap, marker);
+                            }
+                        });
+                    });
+
+                    markersArray.push(marker);
+                    bounds.extend(item['position']);
+                    _this.gMap.markers[String(item['lat']) + ',' + String(item['long'])] = marker;
+                });
+                _this.gMap.fitBounds(bounds);
+            }
+            // save the object for cleaning service
+            gMapHolder = _this.gMap;
+            _this.data('map', _this.gMap);
+
+            return _this;
+        };
+
+        this.getMarkers = function() {
+            return markersArray;
+        };
+
+        this.getOptions = function() {
+            return _this.settings;
+        };
+
+        this.setOptions = function(settings) {
+            _this.settings = $.extend({}, _this.settings, settings);
+        };
+
+        return this;
+    };
+
+    $.fn.advSearchInit = function(as) {
+        activateAsInstance(as);
+        return this;
+    };
+
+    $.fn.reswinUp = function(action) {
         return this.each(function() {
-            switch (e) {
+            switch (action) {
                 case "showfade":
                     $(this).fadeOut(800).hide(1200);
                     break;
@@ -35,9 +149,9 @@ jQuery(function($) {
         });
     };
 
-    $.fn.reswinDown = function(e) {
+    $.fn.reswinDown = function(action) {
         return this.each(function() {
-            switch (e) {
+            switch (action) {
                 case "showfade":
                     $(this).show(800).fadeIn(1200);
                     break;
@@ -51,10 +165,18 @@ jQuery(function($) {
         });
     };
 
-    function activateSearch() {
+    /**
+     * activate search instances
+     * @param {object} opt options
+     * @returns {undefined}
+     */
+    function activateSearch(opt) {
         // Each advsearch instance has its own index ias
         for (var ias = 0; ias < advsea.length; ias++) {
             var asv = eval('(' + advsea[ias] + ')');
+            if (opt && opt.hstx) {
+                asv.hstx = opt.hstx;
+            }
             activateAsInstance(asv);
         }
     }
@@ -84,9 +206,9 @@ jQuery(function($) {
             // search index
             as.sx = 'search';
         }
-        if (!as.ox) {
-            // offset index
-            as.ox = 'offset';
+        if (!as.pax) {
+            // page index
+            as.pax = 'page';
         }
 
         as.lt = null;   // livesearch timeout
@@ -96,28 +218,43 @@ jQuery(function($) {
         as.px = p; //advsearch instance prefix
 
         as.si = $('#' + p + 'advsea-search');   // advsearch input field
+        as.si.unbind();  // detach existing function if any
         var ref = as.si;
 
         as.se = $('#' + p + 'advsea-select');   // select input field if it exists
+        as.se.unbind();  // detach existing function if any
         as.sb = "Search";
         if (!as.ls) {
             as.ss = $('#' + p + 'advsea-submit');  // advsearch submit button if it exists
+            as.ss.unbind();  // detach existing function if any
             as.sb = as.ss.attr('value');
             ref = as.ss;
         }
 
-        $('.advsea-close-img').each(function(){
+        $('.advsea-close-img').each(function() {
             $(this).remove();
         });
-        as.cl = $('<img src="' + _close + '" class="advsea-close-img" alt="' + _closeAlt + '" id="' + p + 'close" />').insertAfter(ref).hide(); // advsearch close img
-
-        $('.advsea-load-img').each(function(){
+        if (as.acii && $('#' + as.acii)[0]) {
+            as.cl = $(as.aci).addClass('advsea-close-img').hide(); // advsearch close img
+            $('#' + as.acii).html(as.cl);
+        } else {
+            as.cl = $(as.aci).addClass('advsea-close-img').insertAfter(ref).hide(); // advsearch close img
+        }
+        $('.advsea-load-img').each(function() {
             $(this).remove();
         });
-        as.ld = $('<img src="' + _load + '" class="advsea-load-img" alt="' + _loadAlt + '" id="' + p + 'load" />').insertAfter(ref).hide(); // advsearch load img
+        if (as.alii && $('#' + as.alii)[0]) {
+            as.ld = $(as.ali).addClass('advsea-load-img').hide(); // advsearch load img
+            $('#' + as.alii).html(as.ld);
+        } else {
+            as.ld = $(as.ali).addClass('advsea-load-img').insertAfter(ref).hide(); // advsearch load img
+        }
+        
         as.rw = $('#' + p + 'advsea-reswin').hide().removeClass('init'); // advsearch results window - hide window
 
-        as.cl.click(function() {
+        as.cl.unbind();  // detach existing function if any
+        as.cl.click(function(event) {
+            (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
             // adds the closeSearch function to the on click on close image.
             closeSearch(as);
             return false;
@@ -125,23 +262,34 @@ jQuery(function($) {
 
         if (!as.ls) {
             // with non livesearch adds the doSearch function to the submit button
-            as.ss.click(function() {
+            as.ss.click(function(event) {
+                (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
+                if (as.hst && as.hstx) {
+                    delete(as.hstx);
+                }
                 doSearch(as);
                 return false;
             });
         } else {
             // with the livesearch mode, adds the doLiveSearch function. Launched after each typed character.
             as.si.keyup(function() {
-                doLiveSearch(as);
+                if (as.hst && as.hstx) {
+                    delete(as.hstx);
+                }
+                return doLiveSearch(as);
             });
         }
 
         if (as.si.length) {
             // add the doSearch function to the input field. Launched after each typed character.
-            as.si.keydown(function(e) {
-                var keyCode = e.keyCode || e.which;
+            as.si.keydown(function(event) {
+                var keyCode = event.keyCode || event.which;
                 if (keyCode === 13) {
-                    doSearch(as);
+                    (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
+                    if (as.hst && as.hstx) {
+                        delete(as.hstx);
+                    }
+                    return doSearch(as);
                 }
             });
         }
@@ -150,7 +298,8 @@ jQuery(function($) {
             // no results displayed the first time
             return false;
         }
-        doSearch(as); // display results
+
+        return doSearch(as); // display results
     }
 
     $.fn.serializeObject = function() {
@@ -169,28 +318,64 @@ jQuery(function($) {
         return o;
     };
 
+    function setGMapMarkers(as, json) {
+        if (typeof (google) !== 'object') {
+            console.error('Missing google object');
+            return;
+        }
+        gMapMarkers = []; // reset data
+        // reset existing markers
+        if (markersArray) {
+            for (var i in markersArray) {
+                markersArray[i].setMap(null);
+            }
+            markersArray.length = 0;
+        }
+
+        $.each(json, function(index, item) {
+            if (!item[as['gmpLt']] || !item[as['gmpLn']]) {
+                return;
+            }
+            var options = {
+                position: new google.maps.LatLng(item[as['gmpLt']], item[as['gmpLn']]),
+                lat: item[as['gmpLt']],
+                long: item[as['gmpLn']],
+                title: item[as['gmpTtl']],
+                urlID: item['id']
+            };
+            gMapMarkers.push(options);
+            // check existing gMap's instance
+            if (gMapHolder) {
+                var marker = new google.maps.Marker(options);
+                marker.setMap(gMapHolder);
+                markersArray.push(marker);
+            }
+        });
+    }
+
     function doLiveSearch(as) {
         if (as.lt) {
             window.clearTimeout(as.lt);
         }
-        as.lt = setTimeout(function() {
-            doSearch(as);
+        as.lt = window.setTimeout(function() {
+            return doSearch(as);
         }, 400);
     }
 
     function doSearch(as) {
         var p = as.asid + '_';      // prefix for the instance
-
-        if (!as.ls && as.is)
+        as.hst = as.hst - 0; // type casting
+        if (!as.ls && as.is) {
             return false;  // search already launched
+        }
 
         // search term analysis
-        st = '';
+        var st = '';
         if (as.si.length) {
             // simple search
             st = as.si.val();
         } else if (as.se.length) {  // multiple select input
-            sl = new Array();
+            var sl = new Array();
             as.se.find('option:selected').each(function(i) {
                 sl.push($(this).attr('value'));
             }); // get the selected options
@@ -201,30 +386,75 @@ jQuery(function($) {
         }
         as.st = st;
 
-        if (as.si.length && (st.length !== 0) && as.ls && (st.length < as.mc)) {
-            return false; // liveSearch needs minChars before to start
+        if ((as.ii !== 'all') ||
+                as.si.length && as.ls && (st.length < as.mc) // liveSearch needs minChars before to start
+                ) {
+            return false;
         }
-
-        // form content as serialized object
-        as.fm = JSON.stringify($('#' + p + 'advsea-form').serializeObject());
 
         // ======================== we start the search
         as.is = true;
-        if (!as.ls) {
+        if ((as.ii !== 'all') && !as.ls) {
             as.ss.attr('disabled', 'disabled');  // submit button disabled
         }
 
         var pars = {
             asid: as.asid,
-            asform: as.fm,
             sub: as.sb
         };
         pars[as.sx] = as.st;
 
+        if (as.hst) {
+            var uri = new URI(document.location.href),
+                    uriQuery = uri.query(true);
+        }
+
+        /**
+         * Page number
+         */
+        if (as.hst && (as.hstx || searchTracker.length === 0) && !as.nav) {
+            if (uriQuery[as.pax]) {
+                pars[as.pax] = uriQuery[as.pax];
+            }
+        } else if (typeof (as.pag) === 'number' && as.pag > 0) {
+            pars[as.pax] = as.pag;
+        } else {
+            pars[as.pax] = 1;
+        }
+
+        if (typeof (pars[as.pax]) === 'undefined' || pars[as.pax] === 'undefined') {
+            pars[as.pax] = 1;
+        }
+
+        // form content as serialized object
+        var formDom = $('#' + p + 'advsea-form');
+        // populate URL if history exists or direct URL
+        if (as.hst && (as.hstx || searchTracker.length === 0)) {
+            var formData = {};
+            $.each(uriQuery, function(idx, val) {
+                var checkbox = /(\[\])$/.test(idx);
+                if (checkbox) {
+                    idx = idx.replace(/(\[\])$/, '');
+                    val = val.split(',');
+                }
+                formData[idx] = val;
+            });
+            formDom.populate(formData);
+            pars[as.sx] = uriQuery[as.sx];
+        }
+
+        var formVals = formDom.serializeObject();
+        as.fm = JSON.stringify(formVals);
+        // page
+        as.pag = (as.fm !== searchTracker[searchTracker.length - 1]) ? 1 : parseInt(as.pag);
+
+        pars['asform'] = as.fm;
+
         as.cl.hide(); // hide the close button
         as.ld.show(); // show the load button
+        as.rw.css('opacity', as.opc / 2);
 
-        $.getJSON(as.arh, pars, function(data) {
+        return $.getJSON(as.arh, pars, function(data) {
             if (data) {
                 var ids = '';
                 if (data.ids) {
@@ -238,152 +468,224 @@ jQuery(function($) {
                 if (data.html) {
                     html = data.html;
                 }
-                as.ppg = parseInt(data.ppg);	// perPage
-                as.ofs = parseInt(data.ofs);	// offset
-                as.pgt = parseInt(data.pgt);	// paging type
-                as.nbr = parseInt(data.nbr);	// nb results
-                as.opc = parseFloat(data.opc);	// opacity
-                as.eff = data.eff;				// effect
+
+                as.ppg = parseInt(data.ppg);    // perPage
+                as.pag = parseInt(data.pag);    // page
+                as.pgt = parseInt(data.pgt);    // paging type
+                as.nbr = parseInt(data.nbr);    // nb results
+                as.opc = parseFloat(data.opc);  // opacity
+                as.eff = data.eff;              // effect
+                as.cdf = data.cdf;              // clearDefault
 
                 as.rw.hide();
                 as.rw.html(html).css('opacity', as.opc).reswinDown(as.eff);
                 if (as.gmp && json) {
-                    gmUpdateMap(as.gmp, json);
+                    var mapCanvas = $('#' + as.gmp);
+                    if (mapCanvas.length > 0) {
+                        var map = mapCanvas.advSearchGMap(as, {
+                            "zoom": (as.gmpZoom - 0),
+                            "centerLat": as.gmpCenterLat,
+                            "centerLong": as.gmpCenterLong
+                        });
+                        setGMapMarkers(as, JSON.parse(json));
+                        map.initialize();
+                    }
                 }
                 if (as.pgt === 1) {
-                    initPrevNext(as); // add the prevNext function to the next link
+                    initPageType1(as);
                 } else if (as.pgt === 2) {
-                    initPageLinks(as); // add the links to the page numbers
+                    initPageType2(as);
+                } else if (as.pgt === 3) {
+                    initPageType3(as);
                 }
             }
             if (!as.ls) {
                 as.ss.removeAttr('disabled'); // submit button enabled
             }
+            as.ld.hide();   // hide the load button
+            as.cl.show();   // show the close button
+            as.is = false;  // new search allowed
+            if (as.hst) {
+                if (!as.hstx) {
+                    setHistory(as, pars);
+                }
+            }
 
-            as.ld.hide(); // hide the load button
-            as.cl.show(); // show the close button
-            as.is = false; // new search allowed
+            searchTracker.push(JSON.stringify(formDom.serializeObject()));
         });
     }
-
-    $.fn.advSearchInit = function(instance) {
-        activateAsInstance(instance);
-        return this;
-    };
 
     function closeSearch(as) {
         as.rw.reswinUp(as.eff);
         as.cl.hide();
         as.ld.hide();
         if (as.si.length) {
-            as.si.val('');
+            $('#' + as.px + 'advsea-form')[0].reset();
             as.si.prop('placeholder', as.cdt);
+            History.pushState({}, document.title, document.location.origin + document.location.pathname);
         }
         as.is = false;
-        if (!as.ls)
+        if (!as.ls) {
             as.ss.removeAttr('disabled'); // enabled the submit button
+        }
     }
 
 //============================================== Previous / next functions ==========================
 
-    function initPrevNext(as) {  // add previous & next links after the display of results
+    function initPageType1(as) {  // add previous & next links after the display of results
         if (as) {
             var next = as.rw.find('.advsea-next a');
-            next.attr("href", "javascript:void(0);"); // remove href
-            next.click(function() {
+            next.prop("href", "javascript:void(0);"); // remove href
+            next.attr("href", "javascript:void(0);"); // remove href, blame IE
+            next.click(function(event) {
+                (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
                 prevNext(as, 1);
+                return false;
             });
             var prev = as.rw.find('.advsea-previous a');
-            prev.attr("href", "javascript:void(0);"); // remove href
-            prev.click(function() {
+            prev.prop("href", "javascript:void(0);"); // remove href
+            prev.attr("href", "javascript:void(0);"); // remove href, blame IE
+            prev.click(function(event) {
+                (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
                 prevNext(as, -1);
+                return false;
             });
         }
-    }
 
-    function prevNext(as, dir) { // update of the page of results
-        var ofs = as.ofs + (dir * as.ppg);
-        var pars = {
-            asid: as.asid,
-            asform: as.fm,
-            sub: as.sb
-        };
-        pars[as.sx] = as.st;
-        pars[as.ox] = ofs;
-
-        $.getJSON(as.arh, pars, function(data) {
-            if (data) {
-                var ids = '';
-                if (data.ids)
-                    ids = data.ids;
-                var json = '';
-                if (data.json)
-                    json = data.json;
-                var html = '';
-                if (data.html)
-                    html = data.html;
-
-                as.ofs = parseInt(data.ofs);	// offset
-                if (as.gmp && json) {
-                    gmUpdateMap(as.gmp, json);
-                }
-
-                as.rw.reswinUp(as.eff);
-                as.rw.html(html).reswinDown(as.eff);
-                initPrevNext(as);
-            }
-        });
     }
 
 //============================================== Page number links ==========================
 
-    function initPageLinks(as) {  // add link to each page number
+    function initPageType2(as) {  // add link to each page number
         if (as) {
             var links = as.rw.find('.advsea-page a').not('.advsea-current-page a');
             links.each(function() {
-                var attr = $(this).attr("href");
-                $(this).attr("href", "javascript:void(0);"); // remove href
-                var rg = /&offset=([0-9]*)/i;
-                var ofs = rg.exec(attr);
-                $(this).click(function() {
-                    pageLink(as, ofs[1]);
+                var href = $(this).data("href");
+                if (typeof(href) === 'undefined' || href === '') {
+                    href = $(this).attr("href");
+                }
+                $(this).prop("href", "javascript:void(0);"); // remove href
+                $(this).attr("href", "javascript:void(0);"); // remove href, blame IE
+                var rg = /&page=([0-9]*)/i;
+                var pag = rg.exec(href);
+                $(this).click(function(event) {
+                    (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
+                    pageLink(as, pag[1]);
+                    return false;
                 });
+            });
+        }
+
+    }
+
+//============================ Previous / next + Page number links ==========================
+
+    function initPageType3(as) {
+        if (as) {
+            var links = as.rw.find('.advsea-page a').not('.advsea-current-page a');
+            links.each(function() {
+                var href = $(this).data("href");
+                if (typeof(href) === 'undefined' || href === '') {
+                    href = $(this).attr("href");
+                }
+                $(this).prop("href", "javascript:void(0);"); // remove href
+                $(this).attr("href", "javascript:void(0);"); // remove href, blame IE
+                var rg = /&page=([0-9]*)/i;
+                var pag = rg.exec(href);
+                $(this).click(function(event) {
+                    (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
+                    pageLink(as, pag[1]);
+                    return false;
+                });
+            });
+            var next = as.rw.find('.advsea-next a');
+            next.prop("href", "javascript:void(0);"); // remove href
+            next.attr("href", "javascript:void(0);"); // remove href, blame IE
+            next.click(function(event) {
+                (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
+                prevNext(as, 1);
+                return false;
+            });
+            var prev = as.rw.find('.advsea-previous a');
+            prev.prop("href", "javascript:void(0);"); // remove href
+            prev.attr("href", "javascript:void(0);"); // remove href, blame IE
+            prev.click(function(event) {
+                (event.preventDefault) ? event.preventDefault() : (event.returnValue = false);
+                prevNext(as, -1);
+                return false;
             });
         }
     }
 
-    function pageLink(as, ofs) { // add page link
-        var pars = {
-            asid: as.asid,
-            asform: as.fm,
-            sub: as.sb
-        };
-        pars[as.sx] = as.st;
-        pars[as.ox] = ofs;
+//======================================== links generators ==========================
 
-        $.getJSON(as.arh, pars, function(data) {
-            if (data) {
-                var ids = '';
-                if (data.ids)
-                    ids = data.ids;
-                var json = '';
-                if (data.json)
-                    json = data.json;
-                var html = '';
-                if (data.html)
-                    html = data.html;
+    function prevNext(as, dir) { // update of the page of results
+        as.pag = as.pag - 0 + dir; // typecasting
+        as.nav = 1;
+        if (as.hst && as.hstx) {
+            delete(as.hstx);
+        }
+        return doSearch(as);
+    }
 
-                as.ofs = parseInt(data.ofs);	// offset
-                if (as.gmp && json) {
-                    gmUpdateMap(as.gmp, json);
-                }
+    function pageLink(as, pag) { // add page link
+        as.pag = pag - 0; // typecasting
+        as.nav = 1;
+        if (as.hst && as.hstx) {
+            delete(as.hstx);
+        }
+        return doSearch(as);
+    }
 
-                as.rw.reswinUp(as.eff);
-                as.rw.html(html).reswinDown(as.eff);
-                initPageLinks(as);
+//============================================== history.js ==========================
+
+    var History = window.History;
+
+    function setHistory(as, pars) {
+        if (!History || !History.enabled || as.ii !== 'all' || as.hstx) {
+            return;
+        }
+        var href = buildUrl(as, pars);
+        if (href !== document.location.href) {
+            blockHistoryEvent = true;
+            History.pushState(pars, document.title, href);
+        }
+        return href;
+    }
+
+    function buildUrl(as, pars) {
+        var asformArr = new Array();
+        var parseForm = JSON.parse(as.fm);
+        var uri = new URI(document.location.href),
+                uriQuery = uri.query(true);
+        //var newUri = $.extend({}, uriQuery, parseForm, {sub: as.sb});
+        var newUri = $.extend({}, parseForm, {sub: as.sb});
+        if (typeof (newUri[as.pax]) !== 'undefined' || newUri[as.pax] !== 'undefined' && (newUri[as.pax] - 0) === as.pag) {
+            newUri[as.pax] = pars[as.pax];
+        } else {
+            newUri[as.pax] = 1;
+        }
+        $.each(newUri, function(index, item) {
+            $.merge(asformArr, [index + '=' + item]);
+        });
+        var asformStr = "?" + asformArr.join('&');
+        var hash = uri.hash();
+        if (hash) {
+            asformStr = asformStr + hash;
+        }
+        return document.location.origin + document.location.pathname + asformStr;
+    }
+
+    if (History && History.enabled) {
+        History.Adapter.bind(window, 'statechange', function() {
+            if (!blockHistoryEvent) {
+                activateSearch({hstx: 1});
             }
+            // resetting value
+            blockHistoryEvent = false;
         });
     }
 
     activateSearch(); // as soon as the DOM is loaded
+
 });

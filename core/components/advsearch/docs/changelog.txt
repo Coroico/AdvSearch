@@ -1,7 +1,21 @@
 Changelog for AdvSearch
 
-AdvSearch dev
+AdvSearch 2.0.0-beta1
 -------------------
+- apply placeholder's prefix in all chunks
+- major refactor of class and controller files
+- [#73] Replace getMicroTime method with standart PHP microtime. getMicroTime was deleted in modx 2.3.
+- [#45] add page and totalPage placeholders
+- [#67] apply addJs=0
+- add plugin to index/remove resource from solr's index
+- fix example of solr's schema
+- fix paging getting value from queryHook
+- devide docindex's path by separate engines
+- add controllers for the search engines
+- add new interface to build Solr's search indexer
+- add new interface to build Zend's search indexer
+- add new pagination type
+- add GMap integration
 - debug form's definition on JS's pagination
 - change set_time_limit to 1000, infinite limit kills.
 - dump the debug output to MODX's error log if it's an ajax call

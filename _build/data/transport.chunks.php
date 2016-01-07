@@ -3,7 +3,8 @@
  * AdvSearch transport chunks
  * Copyright 2012 Coroico <coroico@wangba.fr>
  * @author Coroico <coroico@wangba.fr>
- * 28/11/2012
+ * @author goldsky <goldsky@virtudraft.com>
+ * 07/1/2016
  *
  * AdvSearch is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -28,53 +29,40 @@
 
 $chunks = array();
 
-$chunks[1]= $modx->newObject('modChunk');
-$chunks[1]->fromArray(array(
-    'id' => 1,
+$chunks['AdvSearchForm']= $modx->newObject('modChunk');
+$chunks['AdvSearchForm']->fromArray(array(
     'name' => 'AdvSearchForm',
     'description' => 'SearchForm for AdvSearch',
     'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/searchform.chunk.tpl'),
     'properties' => '',
 ),'',true,true);
 
-$chunks[2]= $modx->newObject('modChunk');
-$chunks[2]->fromArray(array(
-    'id' => 2,
+$chunks['AdvSearchResults']= $modx->newObject('modChunk');
+$chunks['AdvSearchResults']->fromArray(array(
     'name' => 'AdvSearchResults',
     'description' => 'Results for AdvSearch',
     'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/searchresults.chunk.tpl'),
     'properties' => '',
 ),'',true,true);
 
-$chunks[3]= $modx->newObject('modChunk');
-$chunks[3]->fromArray(array(
-    'id' => 3,
+$chunks['AdvSearchResult']= $modx->newObject('modChunk');
+$chunks['AdvSearchResult']->fromArray(array(
     'name' => 'AdvSearchResult',
     'description' => 'Result for AdvSearch',
     'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/searchresult.chunk.tpl'),
     'properties' => '',
 ),'',true,true);
 
-$chunks[4]= $modx->newObject('modChunk');
-$chunks[4]->fromArray(array(
-    'id' => 4,
+$chunks['Extract']= $modx->newObject('modChunk');
+$chunks['Extract']->fromArray(array(
     'name' => 'Extract',
     'description' => 'Extract for AdvSearch',
     'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/extract.chunk.tpl'),
     'properties' => '',
 ),'',true,true);
 
-$chunks[5]= $modx->newObject('modChunk');
-$chunks[5]->fromArray(array(
-    'id' => 5,
-    'name' => 'Paging2',
-    'description' => 'Paging type 2 for AdvSearch',
-    'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/paging2.chunk.tpl'),
-    'properties' => '',
-),'',true,true);
-
-$chunks[6]= $modx->newObject('modChunk');
-$chunks[6]->fromArray(array(
+$chunks['Paging1']= $modx->newObject('modChunk');
+$chunks['Paging1']->fromArray(array(
     'id' => 6,
     'name' => 'Paging1',
     'description' => 'Paging type 1 for AdvSearch',
@@ -82,45 +70,64 @@ $chunks[6]->fromArray(array(
     'properties' => '',
 ),'',true,true);
 
-$chunks[7]= $modx->newObject('modChunk');
-$chunks[7]->fromArray(array(
-    'id' => 7,
+$chunks['Paging2']= $modx->newObject('modChunk');
+$chunks['Paging2']->fromArray(array(
+    'name' => 'Paging2',
+    'description' => 'Paging type 2 for AdvSearch',
+    'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/paging2.chunk.tpl'),
+    'properties' => '',
+),'',true,true);
+
+$chunks['Paging3']= $modx->newObject('modChunk');
+$chunks['Paging3']->fromArray(array(
+    'name' => 'Paging3',
+    'description' => 'Paging type 3 for AdvSearch',
+    'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/paging3.chunk.tpl'),
+    'properties' => '',
+),'',true,true);
+
+$chunks['Paging3RangeSplitter']= $modx->newObject('modChunk');
+$chunks['Paging3RangeSplitter']->fromArray(array(
+    'name' => 'Paging3RangeSplitter',
+    'description' => 'Paging splitter for paging type 3 of AdvSearch',
+    'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/paging3rangesplitter.chunk.tpl'),
+    'properties' => '',
+),'',true,true);
+
+$chunks['PageLink']= $modx->newObject('modChunk');
+$chunks['PageLink']->fromArray(array(
     'name' => 'PageLink',
     'description' => 'Page Link for AdvSearch',
     'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/pagelink.chunk.tpl'),
     'properties' => '',
 ),'',true,true);
 
-$chunks[8]= $modx->newObject('modChunk');
-$chunks[8]->fromArray(array(
-    'id' => 8,
+$chunks['CurrentPageLink']= $modx->newObject('modChunk');
+$chunks['CurrentPageLink']->fromArray(array(
     'name' => 'CurrentPageLink',
     'description' => 'Current Page Link for AdvSearch',
     'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/currentpagelink.chunk.tpl'),
     'properties' => '',
 ),'',true,true);
 
-$chunks[9]= $modx->newObject('modChunk');
-$chunks[9]->fromArray(array(
-    'id' => 9,
+$chunks['HelpLink']= $modx->newObject('modChunk');
+$chunks['HelpLink']->fromArray(array(
     'name' => 'HelpLink',
     'description' => 'Link for AdvSearch Help',
     'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/helplink.chunk.tpl'),
     'properties' => '',
 ),'',true,true);
 
-$chunks[10]= $modx->newObject('modChunk');
-$chunks[10]->fromArray(array(
-    'id' => 10,
+$chunks['ResultsWindow']= $modx->newObject('modChunk');
+$chunks['ResultsWindow']->fromArray(array(
     'name' => 'ResultsWindow',
     'description' => 'Div section to set the ajax window of results',
     'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/resultswindow.chunk.tpl'),
     'properties' => '',
 ),'',true,true);
 
-$chunks[11]= $modx->newObject('modChunk');
-$chunks[11]->fromArray(array(
-    'id' => 11,
+$chunks['MoreResults']= $modx->newObject('modChunk');
+$chunks['MoreResults']->fromArray(array(
     'name' => 'MoreResults',
     'description' => 'More results link of the ajax window of results',
     'snippet' => file_get_contents($sources['source_core'].'/elements/chunks/moreresults.chunk.tpl'),

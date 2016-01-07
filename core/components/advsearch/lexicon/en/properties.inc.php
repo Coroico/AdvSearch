@@ -93,3 +93,6 @@ $_lang['advsearch.advsearch_urlScheme_desc'] = 'Indicates in what format the URL
 $_lang['advsearch.advsearch_withFields_desc'] = 'Define which fields are used for the search in fields of a resource';
 $_lang['advsearch.advsearch_withTVs_desc'] = 'Define which TVs are used for the search in TVs.';
 
+$_lang['prop_advsearch.autocommit_desc'] = 'Solr is having autocommit feature enabled.';
+$_lang['prop_advsearch.engineConfigFile_desc'] = 'Absolute path to the solr\'s config file.';
+$_lang['prop_advsearch.ids_desc'] = 'Comma separated IDs of root documents.';

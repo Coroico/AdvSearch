@@ -1,288 +1,657 @@
 <?php
 
 /**
- * AdvSearch - AdvSearch class
+ * AdvSearch - AdvSearch's main class
  *
  * @package 	AdvSearch
- * @author		Coroico
- * @copyright 	Copyright (c) 2012 by Coroico <coroico@wangba.fr>
+ * @author      Coroico
+ *              goldsky - goldsky@virtudraft.com
+ * @copyright 	Copyright (c) 2012 - 2015 by Coroico <coroico@wangba.fr>
  *
- * @tutorial	Main class to get & display search results
+ * @tutorial	Some useful methods shared by AdvSearch's classes
  *
  */
-include_once dirname(__FILE__) . "/advsearchutil.class.php";
 
-class AdvSearch extends AdvSearchUtil {
+class AdvSearch {
 
-    public $searchResults = null;
-    protected $offset = 0;
-    protected $queryHook = null;
-    protected $extractFields = array();
-    protected $nbExtracts;
-    protected $asr = null;
+    const VERSION = '2.0.0';
+    const RELEASE = 'beta1';
 
-    public function __construct(modX & $modx, array $config = array()) {
+    public $modx;
+    public $config = array();
+    protected $searchString = '';
+    protected $searchQuery = null;
+    protected $searchTerms = array();
+    protected $tstart;
+    protected $dbg = false;
+    /**
+     * To hold error message
+     * @var string
+     */
+    private $_error = array();
 
-        // &maxWords [ 1 < int < 30 ]
-        $maxWords = (int) $modx->getOption('maxWords', $config, 20);
-        $config['maxWords'] = (($maxWords <= 30) && ($maxWords >= 1)) ? $maxWords : 20;
+    /**
+     * To hold placeholder array, flatten array with prefix
+     * @var array
+     */
+    private $_placeholders = array();
+    /**
+     * store the chunk's HTML to property to save memory of loop rendering
+     * @var array
+     */
+    private $_chunks = array();
 
-        // &minChars [  2 <= int <= 10 ]
-        $minChars = (int) $modx->getOption('minChars', $config, 3);
-        $config['minChars'] = (($minChars <= 10) && ($minChars >= 2)) ? $minChars : 3;
+    public function __construct(modX & $modx, array & $config = array()) {
 
-        // &queryHook [ snippet name | '' ]
-        $config['queryHook'] = trim($modx->getOption('queryHook', $config, ''));
+        // get time of starting
+        $mtime = explode(" ", microtime());
+        $this->tstart = $mtime[1] + $mtime[0];
 
-        // &postHook [ a snippet name | '' ]
-        $config['postHook'] = trim($modx->getOption('postHook', $config, ''));
+        $this->modx = & $modx;
 
-        // &postHookTpls [ A comma-separated list of templates for the postHook | '' ]
-        // a list of templates used by the postHook to style the postHooked result
-        $postHookTplsLst = $modx->getOption('postHookTpls', $config, '');
-        $postHookTpls = (!empty($postHookTplsLst)) ? array_map('trim', explode(',', $postHookTplsLst)) : array();
-        $config['postHookTpls'] = implode(',', $postHookTpls);
+        // &debug = [ 0 | 1 ]
+        $config['debug'] = $this->modx->getOption('debug', $config, 0);
+        if ($config['debug']) {
+            // error_reporting(E_ALL & ~E_NOTICE); // sets error_reporting to everything except NOTICE remarks
+            error_reporting(E_ALL);
+            ini_set('display_error', true);
+            if ($config['withAjax']) {
+                $this->_placeholders['debug'] = array();
+                $this->modx->setLogTarget('FILE');
+            } else {
+                $this->modx->setLogTarget('HTML');
+            }
+            $this->modx->setLogLevel(modX::LOG_LEVEL_DEBUG);
+        }
+        $this->dbg = ($config['debug'] > 0);
 
-        // ajax mode parameters
-        if ($config['withAjax']) {
-            // &opacity - [ 0. < float <= 1. ]  Should be a float value
-            $opacity = floatval($modx->getOption('opacity', $config, 1.));
-            $config['opacity'] = ($opacity > 0. && $opacity <= 1.) ? $opacity : 1.0;
-
-            // &effect - [ 'basic' | 'showfade' | 'slidefade' ]
-            $config['effect'] = $modx->getOption('effect', $config, 'basic');
+        // charset [ charset | 'UTF-8' ]
+        $config['charset'] = $this->modx->config['modx_charset'];
+        if (strtolower(trim($config['charset'])) !== 'utf-8') {
+            $msg = '[AdvSearch] AdvSearch runs only with charset UTF-8. The current charset is ' . $config['charset'];
+            $this->modx->log(modX::LOG_LEVEL_ERROR, $msg);
+            throw new Exception($msg);
         }
 
-        return parent::__construct($modx, $config);
+        // check that multibyte string option is on
+        $usemb = $this->modx->config['use_multibyte'];
+        if (!$usemb) {
+            $msg = '[AdvSearch] AdvSearch runs only with the multibyte extension on. See Lexicon and language system settings.';
+            $this->modx->log(modX::LOG_LEVEL_ERROR, $msg);
+            throw new Exception($msg);
+        }
+
+        //===============================================================================================================================
+        // path and url
+        $corePath = $this->modx->getOption('advSearch.core_path', null, $this->modx->getOption('core_path') . 'components/advsearch/');
+        $assetsUrl = $this->modx->getOption('advSearch.assets_url', null, 'assets/components/advsearch/');
+        $this->config = array_merge(array(
+            'corePath' => $corePath,
+            'assetsUrl' => $assetsUrl,
+            'chunksPath' => $corePath . 'elements/chunks/',
+            'modelPath' => $corePath . 'model/',
+                ), $config);
+
+        $this->config = array_map("trim", $this->config);
+
+        // load default lexicon
+        $this->modx->lexicon->load('advsearch:default');
+        $this->loadDefaultConfigs();
+    }
+
+    protected function loadDefaultConfigs() {
+        $this->config = array_map("trim", $this->config);
+
+        $revoVersion = $this->modx->getVersionData();
+        $systemInfo = array(
+            "MODx version" => $revoVersion['full_version'],
+            "Php version" => phpversion(),
+            "MySql version" => $this->getMysqlVersion(),
+            "AdvSearch version" => self::VERSION . ' ' . self::RELEASE,
+        );
+        if ($this->dbg) {
+            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] System environment: ' . print_r($systemInfo, true), '', __METHOD__);
+            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] Config parameters before checking: ' . print_r($this->config, true), '', __METHOD__);
+        }
+
+        // &asId - [Unique id for advSearch instance | 'as0' ]
+        $this->config['asId'] = $this->modx->getOption('asId', $this->config, 'as0');
+
+        // &method [ 'post' | 'get' ]
+        $this->config['method'] = strtolower($this->modx->getOption('method', $this->config, 'get'));
+
+        // &init  [ 'none' | 'all' ]
+        $init = $this->modx->getOption('init', $this->config, 'none');
+        $this->config['init'] = ($init === 'all') ? 'all' : 'none';
+
+        // &libraryPath [ path | '{core_path}components/advsearch/libraries/' ]
+        $path = $this->modx->getOption('libraryPath', $this->config, $this->modx->getOption('advsearch.core_path', null, $this->modx->getOption('core_path') . 'components/advsearch/') . 'libraries/');
+        $this->config['libraryPath'] = $this->replacePropPhs($path);
+
+        /* deprecated @2.0.0 */
+        // &offsetIndex [ string | 'offset' ] : The name of the REQUEST parameter to use for the pagination offset
+        $this->config['offsetIndex'] = $this->modx->getOption('offsetIndex', $this->config, 'offset');
+
+        // &pageIndex [ string | 'page' ] : The name of the REQUEST parameter to use for the pagination page
+        $this->config['pageIndex'] = $this->modx->getOption('pageIndex', $this->config, 'page');
+
+        // &output [ 'json' | 'html' | 'ids' | comma separated outputs ]
+        $this->config['output'] = $this->modx->getOption('output', $this->config, 'html');
+        if (empty($this->config['output'])) {
+            $this->config['output'] = 'html';
+        }
+
+        // &searchIndex [ string | 'search' ]
+        $this->config['searchIndex'] = $this->modx->getOption('searchIndex', $this->config, 'search');
+
+        // searchString [ string | '' ]
+        $this->config['searchString'] = $this->modx->getOption('searchString', $this->config, '');
+
+        // &toPlaceholder [ string | '' ]
+        $this->config['toPlaceholder'] = $this->modx->getOption('toPlaceholder', $this->config, '');
+
+        // &placeholderPrefix [ string | '' ]
+        $this->config['placeholderPrefix'] = $this->modx->getOption('placeholderPrefix', $this->config, 'advsearch');
+
+        // &addCss - [ 0 | 1 ]
+        $this->config['addCss'] = (bool)(int) $this->modx->getOption('addCss', $this->config, 1);
+
+        // &addJs - [ 0 | 1 | 2 ]
+        $addJs = (int) $this->modx->getOption('addJs', $this->config, 1);
+        $this->config['addJs'] = ($addJs == 0 || $addJs == 1 || $addJs == 2) ? $addJs : 1;
+
+        // &withAjax [ 1 | 0 ]
+        $withAjax = (int) $this->modx->getOption('withAjax', $this->config, 0);
+        $this->config['withAjax'] = (($withAjax == 0 || $withAjax == 1)) ? $withAjax : 0;
+
+        // &urlScheme
+        $this->config['urlScheme'] = $this->modx->getOption('urlScheme', $this->config, -1);
+
+        // &hideLinks
+        $this->config['hideLinks'] = $this->modx->getOption('hideLinks', $this->config);
+
+        return $this->config;
+
     }
 
     /**
-     * output the serch results
+     * Set class configuration exclusively for multiple snippet calls
+     * @param   array   $config     snippet's parameters
+     */
+    public function setConfigs(array $config = array()) {
+        $this->config = array_merge($this->config, $config);
+    }
+
+    /**
+     * Get configs
+     * @return array configurations
+     */
+    public function getConfigs() {
+        return $this->config;
+    }
+
+    /**
+     * Define individual config for the class
+     * @param   string  $key    array's key
+     * @param   string  $val    array's value
+     */
+    public function setConfig($key, $val) {
+        $this->config[$key] = $val;
+    }
+
+    /**
+     * Set string error for boolean returned methods
+     * @return  void
+     */
+    public function setError($msg) {
+        $this->_error[] = $msg;
+    }
+
+    /**
+     * Get string error for boolean returned methods
+     * @return  string  output
+     */
+    public function getError() {
+        return @implode("\n", $this->_error);
+    }
+
+    /**
+     * Set internal placeholder
+     * @param   string  $key    key
+     * @param   string  $value  value
+     * @param   string  $prefix add prefix if it's required
+     */
+    public function setPlaceholder($key, $value, $prefix = '') {
+        $prefix = !empty($prefix) ? $prefix : (isset($this->config['phsPrefix']) ? $this->config['phsPrefix'] : '');
+        $this->_placeholders[$prefix . $key] = $this->trimString($value);
+    }
+
+    /**
+     * Get an internal placeholder
+     * @param   string  $key    key
+     * @return  string  value
+     */
+    public function getPlaceholder($key) {
+        return $this->_placeholders[$key];
+    }
+
+    /**
+     * Set internal placeholders
+     * @param   array   $placeholders   placeholders in an associative array
+     * @param   string  $prefix         add prefix if it's required
+     * @param   boolean $merge          define whether the output will be merge to global properties or not
+     * @param   string  $delimiter      define placeholder's delimiter
+     * @return  mixed   boolean|array of placeholders
+     */
+    public function setPlaceholders($placeholders, $prefix = '', $merge = true, $delimiter = '.') {
+        if (empty($placeholders)) {
+            return FALSE;
+        }
+        $prefix = !empty($prefix) ? $prefix : (isset($this->config['phsPrefix']) ? $this->config['phsPrefix'] : '');
+        $placeholders = $this->trimArray($placeholders);
+        $placeholders = $this->implodePhs($placeholders, rtrim($prefix, $delimiter));
+        // enclosed private scope
+        if ($merge) {
+            $this->_placeholders = array_merge($this->_placeholders, $placeholders);
+        }
+        // return only for this scope
+        return $placeholders;
+    }
+
+    /**
+     * Get internal placeholders in an associative array
+     * @return array
+     */
+    public function getPlaceholders() {
+        return $this->_placeholders;
+    }
+
+    /**
+     * Merge multi dimensional associative arrays with separator
+     * @param   array   $array      raw associative array
+     * @param   string  $keyName    parent key of this array
+     * @param   string  $separator  separator between the merged keys
+     * @param   array   $holder     to hold temporary array results
+     * @return  array   one level array
+     */
+    public function implodePhs(array $array, $keyName = null, $separator = '.', array $holder = array()) {
+        $phs = !empty($holder) ? $holder : array();
+        foreach ($array as $k => $v) {
+            $key = !empty($keyName) ? $keyName . $separator . $k : $k;
+            if (is_array($v)) {
+                $phs = $this->implodePhs($v, $key, $separator, $phs);
+            } else {
+                $phs[$key] = $v;
+            }
+        }
+        return $phs;
+    }
+
+    /**
+     * Trim string value
+     * @param   string  $string     source text
+     * @param   string  $charlist   defined characters to be trimmed
+     * @link http://php.net/manual/en/function.trim.php
+     * @return  string  trimmed text
+     */
+    public function trimString($string, $charlist = null) {
+        if (empty($string) && !is_numeric($string)) {
+            return '';
+        }
+        $string = htmlentities($string);
+        // blame TinyMCE!
+        $string = preg_replace('/(&Acirc;|&nbsp;)+/i', '', $string);
+        $string = trim($string, $charlist);
+        $string = trim(preg_replace('/\s+^(\r|\n|\r\n)/', ' ', $string));
+        $string = html_entity_decode($string);
+        return $string;
+    }
+
+    /**
+     * Trim array values
+     * @param   array   $array          array contents
+     * @param   string  $charlist       [default: null] defined characters to be trimmed
+     * @link http://php.net/manual/en/function.trim.php
+     * @return  array   trimmed array
+     */
+    public function trimArray($input, $charlist = null) {
+        if (is_array($input)) {
+            $output = array_map(array($this, 'trimArray'), $input);
+        } else {
+            $output = $this->trimString($input, $charlist);
+        }
+
+        return $output;
+    }
+
+    /**
+     * Parsing template
+     * @param   string  $tpl    @BINDINGs options
+     * @param   array   $phs    placeholders
+     * @return  string  parsed output
+     * @link    http://forums.modx.com/thread/74071/help-with-getchunk-and-modx-speed-please?page=2#dis-post-413789
+     */
+    public function parseTpl($tpl, array $phs = array()) {
+        $output = '';
+
+        if (isset($this->_chunks[$tpl]) && !empty($this->_chunks[$tpl])) {
+            return $this->parseTplCode($this->_chunks[$tpl], $phs);
+        }
+
+        if (preg_match('/^(@CODE|@INLINE)/i', $tpl)) {
+            $tplString = preg_replace('/^(@CODE|@INLINE)/i', '', $tpl);
+            // tricks @CODE: / @INLINE:
+            $tplString = ltrim($tplString, ':');
+            $tplString = trim($tplString);
+            $this->_chunks[$tpl] = $tplString;
+            $output = $this->parseTplCode($tplString, $phs);
+        } elseif (preg_match('/^@FILE/i', $tpl)) {
+            $tplFile = preg_replace('/^@FILE/i', '', $tpl);
+            // tricks @FILE:
+            $tplFile = ltrim($tplFile, ':');
+            $tplFile = trim($tplFile);
+            $tplFile = $this->replacePropPhs($tplFile);
+            try {
+                $output = $this->parseTplFile($tplFile, $phs);
+            } catch (Exception $e) {
+                return $e->getMessage();
+            }
+        }
+        // ignore @CHUNK / @CHUNK: / empty @BINDING
+        else {
+            $tplChunk = preg_replace('/^@CHUNK/i', '', $tpl);
+            // tricks @CHUNK:
+            $tplChunk = ltrim($tpl, ':');
+            $tplChunk = trim($tpl);
+
+            $chunk = $this->modx->getObject('modChunk', array('name' => $tplChunk), true);
+            if (empty($chunk)) {
+                // try to use @splittingred's fallback
+                $f = $this->config['chunksPath'] . strtolower($tplChunk) . '.chunk.tpl';
+                try {
+                    $output = $this->parseTplFile($f, $phs);
+                } catch (Exception $e) {
+                    $output = $e->getMessage();
+                    $this->modx->log(modX::LOG_LEVEL_DEBUG, 'Chunk: ' . $tplChunk . ' is not found, neither the file ' . $output);
+                    return;
+                }
+            } else {
+//                $output = $this->modx->getChunk($tplChunk, $phs);
+                /**
+                 * @link    http://forums.modx.com/thread/74071/help-with-getchunk-and-modx-speed-please?page=4#dis-post-464137
+                 */
+                $chunk = $this->modx->getParser()->getElement('modChunk', $tplChunk);
+                $this->_chunks[$tpl] = $chunk->get('content');
+                $chunk->setCacheable(false);
+                $chunk->_processed = false;
+                $output = $chunk->process($phs);
+            }
+        }
+
+        return $output;
+    }
+
+    /**
+     * Parsing inline template code
+     * @param   string  $code   HTML with tags
+     * @param   array   $phs    placeholders
+     * @return  string  parsed output
+     */
+    public function parseTplCode($code, array $phs = array()) {
+        $chunk = $this->modx->newObject('modChunk');
+        $chunk->setContent($code);
+        $chunk->setCacheable(false);
+        $phs = $this->replacePropPhs($phs);
+        $chunk->_processed = false;
+        return $chunk->process($phs);
+    }
+
+    /**
+     * Parsing file based template
+     * @param   string  $file   file path
+     * @param   array   $phs    placeholders
+     * @return  string  parsed output
+     * @throws  Exception if file is not found
+     */
+    public function parseTplFile($file, array $phs = array()) {
+        if (!file_exists($file)) {
+            throw new Exception('File: ' . $file . ' is not found.');
+        }
+        $o = file_get_contents($file);
+        $this->_chunks[$file] = $o;
+        $chunk = $this->modx->newObject('modChunk');
+
+        // just to create a name for the modChunk object.
+        $name = strtolower(basename($file));
+        $name = rtrim($name, '.tpl');
+        $name = rtrim($name, '.chunk');
+        $chunk->set('name', $name);
+
+        $chunk->setCacheable(false);
+        $chunk->setContent($o);
+        $chunk->_processed = false;
+        $output = $chunk->process($phs);
+
+        return $output;
+    }
+
+    /**
+     * If the chunk is called by AJAX processor, it needs to be parsed for the
+     * other elements to work, like snippet and output filters.
+     *
+     * Example:
+     * <pre><code>
+     * <?php
+     * $content = $myObject->parseTpl('tplName', $placeholders);
+     * $content = $myObject->processElementTags($content);
+     * </code></pre>
+     *
+     * @param   string  $content    the chunk output
+     * @param   array   $options    option for iteration
+     * @return  string  parsed content
+     */
+    public function processElementTags($content, array $options = array()) {
+        $maxIterations = intval($this->modx->getOption('parser_max_iterations', $options, 10));
+        if (!$this->modx->parser) {
+            $this->modx->getParser();
+        }
+        $this->modx->parser->processElementTags('', $content, true, false, '[[', ']]', array(), $maxIterations);
+        $this->modx->parser->processElementTags('', $content, true, true, '[[', ']]', array(), $maxIterations);
+        return $content;
+    }
+
+    /**
+     * Replace the property's placeholders
+     * @param   string|array    $subject    Property
+     * @return  array           The replaced results
+     */
+    public function replacePropPhs($subject) {
+        $pattern = array(
+            '/\{core_path\}/',
+            '/\{base_path\}/',
+            '/\{assets_url\}/',
+            '/\{filemanager_path\}/',
+            '/\[\[\+\+core_path\]\]/',
+            '/\[\[\+\+base_path\]\]/'
+        );
+        $replacement = array(
+            $this->modx->getOption('core_path'),
+            $this->modx->getOption('base_path'),
+            $this->modx->getOption('assets_url'),
+            $this->modx->getOption('filemanager_path'),
+            $this->modx->getOption('core_path'),
+            $this->modx->getOption('base_path')
+        );
+        if (is_array($subject)) {
+            $parsedString = array();
+            foreach ($subject as $k => $s) {
+                if (is_array($s)) {
+                    $s = $this->replacePropPhs($s);
+                }
+                $parsedString[$k] = preg_replace($pattern, $replacement, $s);
+            }
+            return $parsedString;
+        } else {
+            return preg_replace($pattern, $replacement, $subject);
+        }
+    }
+
+    /**
+     * Get mysql version
+     *
+     * @access private
+     * @return string $mysqlVersion mysql server version as "5.5.8-log"
+     */
+    public function getMysqlVersion() {
+        $c = new xPDOCriteria($this->modx, "SELECT VERSION() AS mysql_version;");
+        $c->stmt->execute();
+        $result = $c->stmt->fetchAll(PDO::FETCH_ASSOC);
+        $c->stmt->closeCursor();
+        $mysqlVersion = $result[0]['mysql_version'];
+        return $mysqlVersion;
+    }
+
+    /**
+     * Check whether the request is for the instance of this object
+     * @return boolean
+     */
+    public function forThisInstance() {
+        $asId = (isset($_REQUEST['asId'])) ? $this->sanitize($_REQUEST['asId']) : 'as0';
+        $forThisInstance = ($asId == $this->config['asId']);
+        return $forThisInstance;
+    }
+
+    /**
+     * Returns the elapsed time between the current time and tstart
      *
      * @access public
-     * @return string returns the search results
+     * @param string $start starting time
+     * @return string Elapsed time since start
      */
-    public function output() {
-        $output = '';
-        $msg = '';
-
-        if ($this->forThisInstance()) {
-
-            // initialize searchString
-            if ($this->_initSearchString('', $msg)) {
-
-                // initialise offset of results
-                if (isset($_REQUEST[$this->config['offsetIndex']])) {
-                    $this->offset = $this->sanitize($_REQUEST[$this->config['offsetIndex']]);
-                } else {
-                    $this->offset = 0;
-                }
-
-                // The first time display or not results
-                $init = (isset($_REQUEST['asId']) || isset($_REQUEST['sub'])) ? 'all' : $this->config['init'];
-                if ($init == 'all') {
-                    $asContext = array(
-                        'searchString' => $this->searchString,
-                        'searchQuery' => $this->searchQuery,
-                        'offset' => $this->offset,
-                        'queryHook' => $this->getHooks('queryHook')
-                    );
-
-                    $defaultAdvSearchCorePath = $this->modx->getOption('core_path') . 'components/advsearch/';
-                    $advSearchCorePath = $this->modx->getOption('advsearch.core_path', null, $defaultAdvSearchCorePath);
-                    $this->searchResults = $this->modx->getService('advsearchresults', 'AdvSearchResults', $advSearchCorePath . 'model/advsearch/');
-                    if (!($this->searchResults instanceof AdvSearchResults)) {
-                        $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] Could not load AdvSearchResults class.');
-                        return false;
-                    }
-                    $this->searchResults->setConfigs($this->config);
-                    $this->searchResults->doSearch($asContext);
-                    $this->getHooks('postHook');
-
-                    // display results
-                    $typout = explode(',', $this->config['output']);
-                    $out = array();
-                    foreach ($typout as $to) {
-                        if ($to == 'html') {
-                            if ($this->searchResults->resultsCount) {
-                                $out[$to] = $this->renderOutput($this->searchResults, $asContext);
-                            } else {
-                                $out[$to] = $this->modx->lexicon('advsearch.no_results');
-                            }
-                        } elseif ($to == 'ids') {
-                            $out[$to] = json_encode($this->searchResults->idResults);
-                        } elseif ($to == 'json') {
-                            $out[$to] = json_encode($this->searchResults->results);
-                        }
-                    }
-
-                    if ($this->config['withAjax']) {
-                        $out['ofs'] = $this->offset;
-                        $out['ppg'] = $this->config['perPage'];
-                        $out['nbr'] = $this->searchResults->resultsCount;
-                        $out['pgt'] = $this->config['pagingType'];
-                        $out['opc'] = $this->config['opacity'];
-                        $out['eff'] = $this->config['effect'];
-
-                        $output = json_encode($out);
-                    } else {
-                        if (count($typout) > 1) {
-                            $output = json_encode($out);
-                        } else {
-                            $output = $out[$typout[0]];
-                        }
-                    }
-                }
-            } else {
-                $output = $msg;
-            }
-
-            if (!empty($this->config['toPlaceholder'])) {
-                $this->modx->setPlaceholder($this->config['toPlaceholder'], $output);
-                $output = '';
-            }
-
-            // log elapsed time
-            $this->ifDebug('Elapsed time: ' . $this->getElapsedTime(), __METHOD__, __FILE__, __LINE__);
-
-            return $output;
+    public function getElapsedTime($start = 0) {
+        $tend = microtime(true);
+        if ($start) {
+            $eTime = ($tend - $start);
+        } else {
+            $eTime = ($tend - $this->tstart);
         }
+        $etime = sprintf("%.4fs", $eTime);
+        return $etime;
     }
 
     /**
-     * _initSearchString - initialize searchString && searchQuery
+     * Sanitize a searchString
      *
-     * @access private
-     * @param string $defaultString Default search string value
-     * @param string $msgerr Error message
-     * @return boolean Returns true if correctly initialized, otherwise false.
+     * @access public
+     * @param string $searchString The search string
+     * @return string The sanitized search string
      */
-    private function _initSearchString($defaultString = '', & $msgerr = '') {
-
-        if (isset($this->config['searchString'])) {
-            $defaultString = $this->config['searchString'];
-        }
-
-        if (isset($_REQUEST[$this->config['searchIndex']]) && !empty($_REQUEST[$this->config['searchIndex']])) {
-            $request = $this->sanitizeSearchString($_REQUEST[$this->config['searchIndex']]);
-            if ($request == $this->modx->lexicon('advsearch.box_text')) {
-                $searchString = '';
-            } else {
-                $searchString = $request;
-            }
-        } else {
-            $searchString = $defaultString;
-        }
-
+    public function sanitizeSearchString($searchString) {
         if (!empty($searchString)) {
-            // load the zend lucene library
-            $file = $this->config['libraryPath'] . 'Zend/Search/Lucene.php';
+            $searchStringArray = explode(' ', $searchString);
+            $searchStringArray = array_map("strip_tags", $this->modx->sanitize($searchStringArray, $this->modx->sanitizePatterns));
+            $searchString = implode(' ', $searchStringArray);
+        }
+        return $searchString;
+    }
 
-            if (file_exists($file)) {
-                require_once $file;
-                // parse query
-                $searchQuery = Zend_Search_Lucene_Search_QueryParser::parse($searchString, $this->config['charset']);
-                // valid maxwords and minchars
-                $valid = $this->validQuery($searchQuery, true, $msgerr);
-                if (!$valid) {
-                    return false;
-                }
+    /**
+     * Sanitize a text
+     *
+     * @access public
+     * @param string $text The text to sanitize
+     * @return string The sanitized text
+     */
+    public function sanitize($text) {
+        $text = strip_tags($text);
+        $text = preg_replace('/(\[\[\+.*?\]\])/i', '', $text);
+        return $this->modx->stripTags($text);
+    }
 
-                $this->searchString = $searchString;
-                $this->searchQuery = $searchQuery;
+    /*
+     *  Returns select statement for printing
+     *
+     * @access public
+     * @param xPDOQuery $query The query to print
+     * @return string The select statement
+     */
+    public function niceQuery(xPDOQuery $query = null) {
+        $searched = array("SELECT", "GROUP_CONCAT", "LEFT JOIN", "INNER JOIN", "EXISTS", "LIMIT", "FROM",
+            "WHERE", "GROUP BY", "HAVING", "ORDER BY", "OR", "AND", "IFNULL", "ON", "MATCH", "AGAINST",
+            "COUNT");
+        $replace = array(" \r\nSELECT", " \r\nGROUP_CONCAT", " \r\nLEFT JOIN", " \r\nINNER JOIN", " \r\nEXISTS", " \r\nLIMIT", " \r\nFROM",
+            " \r\nWHERE", " \r\nGROUP BY", " \r\nHAVING", " ORDER BY", " \r\nOR", " \r\nAND", " \r\nIFNULL", " \r\nON", " \r\nMATCH", " \r\nAGAINST",
+            " \r\nCOUNT");
+        $output = '';
+        if (isset($query)) {
+            $query->prepare();
+            $output = str_replace($searched, $replace, " " . $query->toSQL());
+        }
+        return $output;
+    }
+
+    /**
+     * Log a message with details about where and when an event occurs.
+     * @param string $msg The message to log.
+     * @param string $def The name of a defining structure (such as a class) to
+     * help identify the message source.
+     * @param string $file A filename in which the log event occured.
+     * @param string $line A line number to help locate the source of the event
+     * within the indicated file.
+     */
+    public function ifDebug($msg, $def= '', $file= '', $line= '') {
+        if ($this->config['debug']) {
+            if ($this->config['withAjax']) {
+                $target = array(
+                    'target' => 'FILE',
+                );
             } else {
-                $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] Required library not found at ' . $file . '.');
-                return false;
+                $target = 'HTML';
             }
-        } else {
-            // set the default value
-            $this->searchString = $defaultString;
-            $this->searchQuery = null;
+            $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] ' . $msg, $target, $def, $file, $line);
         }
-        return true;
     }
 
     /**
-     * Get possible hooks
+     * Replacing MODX's getCount(), because it has bug on counting SQL with function.<br>
+     * Retrieves a count of xPDOObjects by the specified xPDOCriteria.
      *
-     * @access private
-     * @param string $type Hook type
-     * @return AdvSearchHooks Returns advSearchHooks object
+     * @param string $className Class of xPDOObject to count instances of.
+     * @param mixed $criteria Any valid xPDOCriteria object or expression.
+     * @return integer The number of instances found by the criteria.
+     * @see xPDO::getCount()
+     * @link http://forums.modx.com/thread/88619/getcount-fails-if-the-query-has-aggregate-leaving-having-039-s-field-undefined The discussion for this
      */
-    public function getHooks($type) {
-        if (!empty($this->config[$type])) {
-            include_once dirname(__FILE__) . "/advsearchhooks.class.php";
-            if (!class_exists('AdvSearchHooks')) {
-                $this->modx->log(modX::LOG_LEVEL_ERROR, '[AdvSearch] Could not load AdvSearchHooks class.');
-                return false;
+    public function getQueryCount($className, $criteria= null) {
+        $count= 0;
+        if ($query= $this->modx->newQuery($className, $criteria)) {
+            $expr= '*';
+            if ($pk= $this->modx->getPK($className)) {
+                if (!is_array($pk)) {
+                    $pk= array ($pk);
+                }
+                $expr= $this->modx->getSelectColumns($className, 'alias', '', $pk);
             }
-            $ashooks = new AdvSearchHooks($this);
-            if (!empty($ashooks)) {
-                if ($type === 'queryHook') {
-                    $ashooks->loadMultiple($this->config[$type], array(), array(
-                        'hooks' => $this->config[$type],
-                        'searchString' => $this->searchString
-                    ));
-                    $this->queryHook = $ashooks->queryHook;
-                    $this->ifDebug('QueryHook: ' . print_r($this->queryHook, true), __METHOD__, __FILE__, __LINE__);
-
-                    return $this->queryHook;
-                } elseif ($type === 'postHook') {
-                    $ashooks->loadMultiple($this->config[$type], array(
-                        'hooks' => $this->config[$type],
-                        'offset' => $this->offset,
-                        'perPage' => $this->config['perPage'],
-                        'postHookTpls' => $this->config['postHookTpls']
-                    ));
-                    $this->searchResults = $ashooks->postHook;
-                    $this->ifDebug('PostHook: ' . print_r($ashooks->postHook, true), __METHOD__, __FILE__, __LINE__);
-
-                    return true;
+            $query->prepare();
+            $sql = $query->toSQL();
+            $stmt= $this->modx->query("SELECT COUNT($expr) FROM ($sql) alias");
+            if ($stmt) {
+                $tstart = microtime(true);
+                if ($stmt->execute()) {
+                    $this->modx->queryTime += microtime(true) - $tstart;
+                    $this->modx->executedQueries++;
+                    if ($results= $stmt->fetchAll(PDO::FETCH_COLUMN)) {
+                        $count= reset($results);
+                        $count= intval($count);
+                    }
+                } else {
+                    $this->modx->queryTime += microtime(true) - $tstart;
+                    $this->modx->executedQueries++;
+                    $this->modx->log(modX::LOG_LEVEL_ERROR, "[AdvSearch] Error " . $stmt->errorCode() . " executing statement: \n" . print_r($stmt->errorInfo(), true), '', __METHOD__, __FILE__, __LINE__);
                 }
             }
         }
-
-        return false;
-    }
-
-    /**
-     * valid a search query
-     *
-     * @access private
-     * @param Zend_Search_Lucene_Search_Query $query The query to validate
-     * @param boolean/null $sign true if mandatory, null if optional, false if excluded
-     * @param string $msgerr Error message
-     * @param integer $nbTerms Number of terms already processed
-     * @return boolean Returns true if valid, otherwise false.
-     */
-    private function _validQuery($query = null, $sign = true, & $msgerr = '', & $nbTerms = 0) {
-        if ($query instanceOf Zend_Search_Lucene_Search_Query_Boolean) {
-            $subqueries = $query->getSubqueries();
-            $signs = $query->getSigns();
-            $nbs = count($subqueries);
-            for ($i = 0; $i < $nbs; $i++) {
-                $valid = $this->_validQuery($subqueries[$i], $signs[$i], $msgerr, $nbTerms);
-                if (!$valid) {
-                    return false;
-                }
-            }
-
-            return true;
-        } else if ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Phrase) {
-            $phrase = $query->__toString();
-            $valid = $this->validTerm($phrase, 'phrase', $sign, $msgerr, $nbTerms);
-
-            return $valid;
-        } else if ($query instanceOf Zend_Search_Lucene_Search_Query_Preprocessing_Term) {
-            $term = $query->__toString();
-            $valid = $this->validTerm($term, 'word', $sign, $msgerr, $nbTerms);
-
-            return $valid;
-        } else {
-            $msgerr = $this->modx->lexicon('advsearch.invalid_query');
-
-            return false;
-        }
+        return $count;
     }
 
     /*
@@ -291,17 +660,15 @@ class AdvSearch extends AdvSearchUtil {
      * @access private
      * @param string or array $term The term(s) to validate
      * @param boolean/null $sign true if mandatory, null if optional, false if excluded
-     * @param string $msgerr error message
      * @param integer $nbTerms Number of terms already processed
      * @return boolean Returns true if valid, otherwise false.
      */
-
-    public function validTerm($term, $type, $sign, & $msgerr, & $nbTerms = 0, $record = true) {
+    public function validTerm($term, $type, $sign, & $nbTerms = 0, $record = true) {
         if ($type == 'phrase') {
             $phrase = substr($term, 1, -1); // remove beginning and end quotes
             $phraseArray = explode(' ', $phrase);
             foreach ($phraseArray as $word) {
-                $valid = $this->validTerm($word, 'word', $sign, $msgerr, $nbTerms, false);
+                $valid = $this->validTerm($word, 'word', $sign, $nbTerms, false);
                 if (!$valid) {
                     return false;
                 }
@@ -315,6 +682,7 @@ class AdvSearch extends AdvSearchUtil {
                     'minterm' => $term,
                     'minchars' => $this->config['minChars']
                 ));
+                $this->setError($msgerr);
 
                 return false;
             }
@@ -323,6 +691,7 @@ class AdvSearch extends AdvSearchUtil {
                 $msgerr = $this->modx->lexicon('advsearch.maxwords', array(
                     'maxwords' => $this->config['maxwords']
                 ));
+                $this->setError($msgerr);
 
                 return false;
             }
@@ -335,533 +704,24 @@ class AdvSearch extends AdvSearchUtil {
         }
     }
 
-    /*
-     * Returns search results output
-     *
-     * @access public
-     * @param AdvSearchResults $asr a AdvSearchResult object
-     * @return string Returns search results output
-     */
-
-    public function renderOutput(AdvSearchResults $asr = null) {
-        $placeholders = array();
-        $output = '';
-
-        if (is_null($asr)) {
-            return $output;
-        }
-
-        $results = $asr->results;
-        $pageResultsCount = count($results);
-        $resultsCount = $asr->resultsCount;
-        $this->searchTerms = array_unique($this->searchTerms);
-
-        $displayedFields = array_merge($asr->mainFields, $asr->tvFields, $asr->joinedFields);
-        $this->_checkDisplayParams($displayedFields);
-
-        // add advSearch css file
-        if ($this->config['addCss'] == 1) {
-            $this->modx->regClientCss($this->config['assetsUrl'] . 'css/advsearch.css');
-        }
-
-        // results header
-        $infoOutput = $this->_getResultInfo($this->searchString, $resultsCount);
-
-        // pagination
-        $pagingOutput = $this->_getPaging($this->searchString, $resultsCount, $this->offset, $pageResultsCount);
-
-        // moreResults link
-        $moreLinkOutput = $this->_getMoreLink($this->searchString, $resultsCount, $this->offset, $pageResultsCount);
-
-        // results
-        $resultsOutput = '';
-        $idx = $this->offset + 1;
-
-        foreach ($results as $result) {
-
-            if ($this->nbExtracts && count($this->extractFields)) {
-                $text = '';
-                foreach ($this->extractFields as $extractField) {
-                    $text .= "{$this->processElementTags($result[$extractField])}";
-                }
-
-                $extracts = $this->_getExtracts(
-                        $text, $this->nbExtracts, $this->config['extractLength'], $this->searchTerms, $this->config['extractTpl'], $ellipsis = '...'
-                );
-            } else {
-                $extracts = '';
-            }
-
-            $result['idx'] = $idx;
-            $result['extracts'] = $extracts;
-
-            if (empty($result['link'])) {
-                $ctx = (!empty($result['context_key'])) ? $result['context_key'] : $this->modx->context->get('key');
-                if ((int) $result[$asr->primaryKey]) {
-                    $result['link'] = $this->modx->makeUrl($result[$asr->primaryKey], $ctx, '', $this->config['urlScheme']);
-                }
-            }
-
-            $resultsOutput .= $this->processElementTags($this->parseTpl($this->config['tpl'], $result));
-            $idx++;
-        }
-
-        $resultsPh = array(
-            'resultInfo' => $infoOutput,
-            'paging' => $pagingOutput,
-            'pagingType' => $this->config['pagingType'],
-            'results' => $resultsOutput,
-            'moreResults' => $moreLinkOutput
-        );
-        $output = $this->processElementTags($this->parseTpl($this->config['containerTpl'], $resultsPh));
-
-        // set global placeholders
-        // query: search term entered by user, total: number of results, etime: elapsed time
-        $placeholders = array(
-            'query' => $this->searchString,
-            'total' => $resultsCount,
-            'etime' => $this->getElapsedTime()
-        );
-        $this->modx->setPlaceholders($placeholders, $this->config['placeholderPrefix']);
-
-        return $output;
-    }
-
-    /**
-     * Check parameters for the displaying of results
-     *
-     * @access private
-     * @param array $displayedFields Fields to display
-     */
-    private function _checkDisplayParams($displayedFields) {
-
-        // &output
-        $outputLst = $this->modx->getOption('output', $this->config, 'output');
-        $output = array_map('trim', explode(',', $outputLst));
-        $output = array_intersect($output, array('html', 'rows', 'ids'));
-        if (!count($output)) {
-            $output = array('html');
-        }
-        $this->config['output'] = implode(',', $output);
-
-        // &containerTpl [ chunk name | 'AdvSearchResults' ]
-        $containerTpl = $this->modx->getOption('containerTpl', $this->config, 'AdvSearchResults');
-        $chunk = $this->parseTpl($containerTpl);
-        $this->config['containerTpl'] = (empty($chunk)) ? 'AdvSearchResults' : $containerTpl;
-
-        // &tpl [ chunk name | 'AdvSearchResult' ]
-        $tpl = $this->modx->getOption('tpl', $this->config, 'AdvSearchResult');
-        $chunk = $this->parseTpl($tpl);
-        $this->config['tpl'] = (empty($chunk)) ? 'AdvSearchResult' : $tpl;
-
-        // &showExtract [ string | '1:content' ]
-        $showExtractArray = explode(':', $this->modx->getOption('showExtract', $this->config, '1:content'));
-        if ((int) $showExtractArray[0] < 0) {
-            $showExtractArray[0] = 0;
-        }
-        if ($showExtractArray[0]) {
-            if (!isset($showExtractArray[1])) {
-                $showExtractArray[1] = 'content';
-            }
-            // check that all the fields selected for extract exists in mainFields, tvFields or joinedFields
-            $extractFields = explode(',', $showExtractArray[1]);
-            foreach ($extractFields as $key => $field) {
-                if (!in_array($field, $displayedFields)) {
-                    unset($extractFields[$key]);
-                }
-            }
-            $this->extractFields = array_values($extractFields);
-            $this->nbExtracts = $showExtractArray[0];
-            $this->config['showExtract'] = $showExtractArray[0] . ':' . implode(',', $this->extractFields);
-        } else {
-            $this->nbExtracts = 0;
-            $this->config['showExtract'] = '0';
-        }
-
-        if ($this->nbExtracts && count($this->extractFields)) {
-            // &extractEllipsis [ string | '...' ]
-            $this->config['extractEllipsis'] = $this->modx->getOption('extractEllipsis', $this->config, '...');
-
-            // &extractLength [ 50 < int < 800 | 200 ]
-            $extractLength = (int) $this->modx->getOption('extractLength', $this->config, 200);
-            $this->config['extractLength'] = (($extractLength < 800) && ($extractLength >= 50)) ? $extractLength : 200;
-
-            // &extractTpl [ chunk name | 'Extract' ]
-            $extractTpl = $this->modx->getOption('extractTpl', $this->config, 'Extract');
-            $chunk = $this->parseTpl($extractTpl);
-            $this->config['extractTpl'] = (empty($chunk)) ? 'Extract' : $extractTpl;
-
-            // &highlightResults [ 0 | 1 ]
-            $highlightResults = (int) $this->modx->getOption('highlightResults', $this->config, 1);
-            $this->config['highlightResults'] = (($highlightResults == 0 || $highlightResults == 1)) ? $highlightResults : 1;
-
-            if ($this->config['highlightResults']) {
-                // &highlightClass [ string | 'advsea-highlight']
-                $this->config['highlightClass'] = $this->modx->getOption('highlightClass', $this->config, 'advsea-highlight');
-
-                // &highlightTag [ tag name | 'span' ]
-                $this->config['highlightTag'] = $this->modx->getOption('highlightTag', $this->config, 'span');
-            }
-        }
-
-        // &pagingType[ 0 | 1 | 2 ]
-        $pagingType = (int) $this->modx->getOption('pagingType', $this->config, 1);
-        $this->config['pagingType'] = (($pagingType <= 2) && ($pagingType >= 0)) ? $pagingType : 1;
-
-        if ($this->config['pagingType'] == 1) {
-            // &paging1Tpl [ chunk name | 'Paging1' ]
-            $paging1Tpl = $this->modx->getOption('paging1Tpl', $this->config, 'Paging1');
-            $chunk = $this->parseTpl($paging1Tpl);
-            $this->config['paging1Tpl'] = (empty($chunk)) ? 'Paging1' : $paging1Tpl;
-        } elseif ($this->config['pagingType'] == 2) {
-            // &paging2Tpl [ chunk name | 'Paging2' ]
-            $paging2Tpl = $this->modx->getOption('paging2Tpl', $this->config, 'Paging2');
-            $chunk = $this->parseTpl($paging2Tpl);
-            $this->config['paging2Tpl'] = (empty($chunk)) ? 'Paging2' : $paging2Tpl;
-
-            // &currentPageTpl [ chunk name | 'CurrentPageLink' ]
-            $currentPageTpl = $this->modx->getOption('currentPageTpl', $this->config, 'CurrentPageLink');
-            $chunk = $this->parseTpl($currentPageTpl);
-            $this->config['currentPageTpl'] = (empty($chunk)) ? 'CurrentPageLink' : $currentPageTpl;
-
-            // &pageTpl [ chunk name | 'PageLink' ]
-            $pageTpl = $this->modx->getOption('pageTpl', $this->config, 'PageLink');
-            $chunk = $this->parseTpl($pageTpl);
-            $this->config['pageTpl'] = (empty($chunk)) ? 'PageLink' : $pageTpl;
-
-            // &pagingSeparator
-            $this->config['pagingSeparator'] = $this->modx->getOption('pagingSeparator', $this->config, ' | ');
-        }
-
-        if ($this->config['withAjax']) {
-            // &moreResults - [ int id of a document | 0 ]
-            $moreResults = (int) $this->modx->getOption('moreResults', $this->config, 0);
-            $this->config['moreResults'] = ($moreResults > 0) ? $moreResults : 0;
-
-            if ($this->config['moreResults']) {
-                // &moreResultsTpl [ chunk name | 'MoreResults' ]
-                $moreResultsTpl = $this->modx->getOption('moreResultsTpl', $this->config, 'MoreResults');
-                $chunk = $this->parseTpl($moreResultsTpl);
-                $this->config['moreResultsTpl'] = (empty($chunk)) ? 'MoreResults' : $moreResultsTpl;
-            }
-        }
-
-        $this->ifDebug('Config parameters after checking in class ' . __CLASS__ . ': ' . print_r($this->config, true), __METHOD__, __FILE__, __LINE__);
-
-        return true;
-    }
-
-    /*
-     * Returns Result info header
-     *
-     * @access private
-     * @param string $searchString The search string
-     * @param integer $resultsCount The number of results found
-     * @return string Returns search results output header info
-     */
-
-    private function _getResultInfo($searchString, $resultsCount) {
-        $output = '';
-        if (!empty($searchString)) {
-            if ($resultsCount > 1) {
-                $lexicon = 'advsearch.results_text_found_plural';
-            } else {
-                $lexicon = 'advsearch.results_text_found_singular';
-            }
-            $output = $this->modx->lexicon($lexicon, array(
-                'count' => $resultsCount,
-                'text' => !empty($this->config['highlightResults']) ? $this->_addHighlighting($searchString, $this->searchTerms, $this->config['highlightClass'], $this->config['highlightTag']) : $searchString
-            ));
-        } else {
-            if ($resultsCount > 1) {
-                $lexicon = 'advsearch.results_found_plural';
-            } else {
-                $lexicon = 'advsearch.results_found_singular';
-            }
-            $output = $this->modx->lexicon($lexicon, array(
-                'count' => $resultsCount
-            ));
-        }
-
-        return $output;
-    }
-
-    /*
-     * Returns paging (type 0 or 1)
-     *
-     * @access private
-     * @param string $searchString The search string
-     * @param integer $resultsCount The number of results found
-     * @param integer $offset The offset of the result page
-     * @param integer $pageResultsCount The number of results for the current page
-     * @return string Returns search results output header info
-     */
-
-    private function _getPaging($searchString, $resultsCount, $offset, $pageResultsCount) {
-        $output = '';
-        if ($this->config['perPage'] && $this->config['pagingType']) {
-            $id = $this->modx->resource->get('id');
-            $idParameters = $this->modx->request->getParameters();
-
-            // first: number of the first result of the current page, last: number of the last result of current page,
-            // page: number of the current page, nbpages: total number of pages
-            $currentPage = ceil($offset / $this->config['perPage']) + 1;
-            $nbPages = ceil($resultsCount / $this->config['perPage']);
-            $pagePh = array(
-                'first' => $offset + 1,
-                'last' => $offset + $pageResultsCount,
-                'total' => $resultsCount,
-                'currentpage' => $currentPage,
-                'nbpages' => $nbPages
-            );
-            $this->modx->setPlaceholders($pagePh, $this->config['placeholderPrefix']);
-
-            $qParameters = array();
-            if (!empty($this->queryHook['requests'])) {
-                $qParameters = $this->queryHook['requests'];
-            }
-
-            if ($this->config['pagingType'] == 1) {
-                // pagination type 1
-                $pagePh = array();
-                $nextOffset = $offset + $this->config['perPage'];
-                if ($nextOffset < $resultsCount) {
-                    $parameters = array_merge($idParameters, $qParameters, array(
-                        $this->config['offsetIndex'] => $nextOffset
-                    ));
-                    $pagePh['nextlink'] = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
-                }
-
-                $previousOffset = $offset - $this->config['perPage'];
-                if ($previousOffset >= 0) {
-                    $parameters = array_merge($idParameters, $qParameters, array(
-                        $this->config['offsetIndex'] => $previousOffset
-                    ));
-                    $pagePh['previouslink'] = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
-                }
-
-                $output = $this->processElementTags($this->parseTpl($this->config['paging1Tpl'], $pagePh));
-            } elseif ($this->config['pagingType'] == 2) {
-                // pagination type 2
-                $paging2 = '';
-                for ($i = 0; $i < $nbPages; ++$i) {
-                    $pagePh = array();
-                    $pagePh['text'] = $i + 1;
-                    $pagePh['separator'] = $this->config['pagingSeparator'];
-                    $pagePh['offset'] = $i * $this->config['perPage'];
-                    if ($currentPage == $i + 1) {
-                        $pagePh['link'] = $i + 1;
-                        $paging2 .= $this->processElementTags($this->parseTpl($this->config['currentPageTpl'], $pagePh));
-                    } else {
-                        $parameters = array_merge($idParameters, $qParameters, array(
-                            $this->config['offsetIndex'] => $pagePh['offset']
-                        ));
-                        $pagePh['link'] = $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme']);
-                        $paging2 .= $this->processElementTags($this->parseTpl($this->config['pageTpl'], $pagePh));
-                    }
-                    if ($i < $nbPages) {
-                        $paging2 .= $this->config['pagingSeparator'];
-                    }
-                }
-                $paging2 = trim($paging2, $this->config['pagingSeparator']);
-                $output = $this->processElementTags($this->parseTpl($this->config['paging2Tpl'], array('paging2' => $paging2)));
-            }
-        }
-        return $output;
-    }
-
-    /*
-     * Returns "More results" link
-     *
-     * @access private
-     * @param string $searchString The search string
-     * @param integer $resultsCount The number of results found
-     * @param integer $offset The offset of the result page
-     * @param integer $pageResultsCount The number of results for the current page
-     * @return string Returns "More results" link
-     */
-
-    private function _getMoreLink($searchString, $resultsCount, $offset, $pageResultsCount) {
-        $output = '';
-        if ($this->config['moreResults']) {
-            $idParameters = $this->modx->request->getParameters();
-            $qParameters = array();
-            if (!empty($this->queryHook['requests'])) {
-                $qParameters = $this->queryHook['requests'];
-            }
-            $parameters = array_merge($idParameters, $qParameters);
-            $id = $this->config['moreResults'];
-            $linkPh = array(
-                'asId' => $this->config['asId'],
-                'moreLink' => $this->modx->makeUrl($id, '', $parameters, $this->config['urlScheme'])
-            );
-            $output = $this->processElementTags($this->parseTpl($this->config['moreResultsTpl'], $linkPh));
-        }
-        return $output;
-    }
-
-    /*
-     * Returns extracts with highlighted searchterms
-     *
-     * @access private
-     * @param string $text The text from where to extract extracts
-     * @param integer $nbext The number of extracts required / found
-     * @param integer $extractLength The extract lenght wished
-     * @param array $searchTerms The searched terms
-     * @param string $tpl The template name for extract
-     * @param string $ellipsis The string to use as ellipsis
-     * @return string Returns extracts output
-     * @tutorial this algorithm search several extracts for several search terms
-     * 		if some extracts intersect then they are merged. Searchterm could be
-     *      a lucene regexp expression using ? or *
-     */
-
-    private function _getExtracts($text, $nbext = 1, $extractLength = 200, $searchTerms = array(), $tpl = '', $ellipsis = '...') {
-
-        mb_internal_encoding($this->config['charset']); // set internal encoding to UTF-8 for multi-bytes functions
-
-        $text = trim(preg_replace('/\s+/', ' ', $this->sanitize($text)));
-        $textLength = mb_strlen($text);
-        if (empty($text)) {
-            return '';
-        }
-
-        $trimchars = "\t\r\n -_()!~?=+/*\\,.:;\"'[]{}`&";
-        $nbTerms = count($searchTerms);
-        if (!$nbTerms) {
-            // with an empty searchString - show as introduction the first characters of the text
-            if (($extractLength > 0) && !empty($text)) {
-                $offset = ($extractLength < $textLength) ? $extractLength - 1 : $textLength - 1;
-                $pos = min(mb_strpos($text, ' ', $offset), mb_strpos($text, '.', $offset));
-                if ($pos) {
-                    $intro = rtrim(mb_substr($text, 0, $pos), $trimchars) . $ellipsis;
-                } else {
-                    $intro = $text;
-                }
-            } else {
-                $intro = '';
-            }
-
-            return $this->processElementTags($this->parseTpl($tpl, array('extract' => $intro)));
-        }
-
-        // get extracts
-        $extracts = array();
-        $extractLength2 = $extractLength / 2;
-        $rank = 0;
-
-        // search the position of all search terms
-        foreach ($searchTerms as $searchTerm) {
-            $rank++;
-            // replace lucene wildcards by regexp wildcards
-            $pattern = array('#\*#', '#\?#');
-            $replacement = array('\w*', '\w');
-            $searchTerm = preg_replace($pattern, $replacement, $searchTerm);
-            $pattern = '#' . $searchTerm . '#i';
-            $matches = array();
-            $nbr = preg_match_all($pattern, $text, $matches, PREG_OFFSET_CAPTURE);
-
-            for ($i = 0; $i < $nbr && $i < $nbext; $i++) {
-                $term = $matches[0][$i][0]; // term found even with wildcard
-                $wordLength = mb_strlen($term);
-                $wordLength2 = $wordLength / 2;
-                $wordLeft = mb_strlen(mb_substr($text, 0, $matches[0][$i][1]));
-                $wordRight = $wordLeft + $wordLength - 1;
-                $left = (int) ($wordLeft - $extractLength2 + $wordLength2);
-                $right = $left + $extractLength - 1;
-                if ($left < 0) {
-                    $left = 0;
-                }
-                if ($right > $textLength) {
-                    $right = $textLength;
-                }
-                $extracts[] = array(
-                    'searchTerm' => $term,
-                    'wordLeft' => $wordLeft,
-                    'wordRight' => $wordRight,
-                    'rank' => $rank,
-                    'left' => $left,
-                    'right' => $right,
-                    'etcLeft' => $ellipsis,
-                    'etcRight' => $ellipsis
-                );
-            }
-        }
-
-        $nbext = count($extracts);
-        if ($nbext > 1) {
-            for ($i = 0; $i < $nbext; $i++) {
-                $lft[$i] = $extracts[$i]['left'];
-                $rght[$i] = $extracts[$i]['right'];
-            }
-            array_multisort($lft, SORT_ASC, $rght, SORT_ASC, $extracts);
-
-            for ($i = 0; $i < $nbext; $i++) {
-                $begin = mb_substr($text, 0, $extracts[$i]['left']);
-                if ($begin != '') {
-                    $extracts[$i]['left'] = (int) mb_strrpos($begin, ' ');
-                }
-
-                $end = mb_substr($text, $extracts[$i]['right'] + 1, $textLength - $extracts[$i]['right']);
-                if ($end != '') {
-                    $dr = (int) mb_strpos($end, ' ');
-                }
-                if (is_int($dr)) {
-                    $extracts[$i]['right']+= $dr + 1;
-                }
-            }
-
-            if ($extracts[0]['left'] == 0) {
-                $extracts[0]['etcLeft'] = '';
-            }
-            for ($i = 1; $i < $nbext; $i++) {
-                if ($extracts[$i]['left'] < $extracts[$i - 1]['wordRight']) {
-                    $extracts[$i - 1]['right'] = $extracts[$i - 1]['wordRight'];
-                    $extracts[$i]['left'] = $extracts[$i - 1]['right'] + 1;
-                    $extracts[$i - 1]['etcRight'] = $extracts[$i]['etcLeft'] = '';
-                } else if ($extracts[$i]['left'] < $extracts[$i - 1]['right']) {
-                    $extracts[$i - 1]['right'] = $extracts[$i]['left'];
-                    $extracts[$i - 1]['etcRight'] = $extracts[$i]['etcLeft'] = '';
-                }
-            }
-        }
-
-        $output = '';
-        $highlightTag = $this->config['highlightTag'];
-        $highlightClass = $this->config['highlightClass'];
-
-        for ($i = 0; $i < $nbext; $i++) {
-            $extract = mb_substr($text, $extracts[$i]['left'], $extracts[$i]['right'] - $extracts[$i]['left'] + 1);
-            if ($this->config['highlightResults']) {
-                $rank = $extracts[$i]['rank'];
-                $searchTerm = $extracts[$i]['searchTerm'];
-                $pattern = '#' . preg_quote($searchTerm, '/') . '#i';
-                $subject = '<' . $highlightTag . ' class="' . $highlightClass . ' ' . $highlightClass . '-' . $rank . '">\0</' . $highlightTag . '>';
-                $extract = preg_replace($pattern, $subject, $extract);
-            }
-            $extractPh = array(
-                'extract' => $extracts[$i]['etcLeft'] . $extract . $extracts[$i]['etcRight']
-            );
-            $output .= $this->processElementTags($this->parseTpl($tpl, $extractPh));
-        }
-        return $output;
-    }
-
     /**
      * Adds highlighting to the passed string
      *
-     * @access private
-     * @param string $searchString The search string
-     * @param array $searchTerms The searched terms
-     * @param string $class The class name to use for highlight the terms found
-     * @param string $tag The html tag name to use to wrap the term found
-     * @return string Returns highlighted search string
+     * @param   string  $string         The string
+     * @param   array   $searchTerms    The searched terms
+     * @param   string  $class          The class name to use for highlight the terms found
+     * @param   string  $tag            The html tag name to use to wrap the term found
+     * @return  string  Returns highlighted string
      */
-    private function _addHighlighting($string, array $searchTerms = array(), $class = 'advsea-highlight', $tag = 'span') {
+    public function addHighlighting($string, array $searchTerms = array(), $class = 'advsea-highlight', $tag = 'span', $rank = null) {
         foreach ($searchTerms as $key => $value) {
-            $pattern = preg_quote($value);
-            $string = preg_replace('/' . $pattern . '/i', '<' . $tag . ' class="' . $class . ' ' . $class . '-' . ($key + 1) . '">$0</' . $tag . '>', $string);
+            $pattern = preg_quote($value, '/');
+            if (empty($rank)) {
+                $rank = ($key + 1);
+            }
+            $string = preg_replace('/(\s*)(' . $pattern . ')(\s*)/i', '<' . $tag . ' class="' . $class . ' ' . $class . '-' . $rank . '">$0</' . $tag . '>', $string);
         }
+
         return $string;
     }
 

@@ -5,7 +5,8 @@
  *
  * @package 	AdvSearch
  * @author		Coroico
- * @copyright 	Copyright (c) 2012 by Coroico <coroico@wangba.fr>
+ *              goldsky - goldsky@virtudraft.com
+ * @copyright 	Copyright (c) 2012 - 2015 by Coroico <coroico@wangba.fr>
  *
  * @tutorial	Class to handle hooks for AdvSearch classes
  *
@@ -125,6 +126,7 @@ class AdvSearchHooks {
             $this->errors[$hook] .= ' ' . $success;
             $success = false;
         }
+
         return $success;
     }
 
@@ -209,7 +211,8 @@ class AdvSearchHooks {
                     /* @since 1.3 */
                 case 'MATCH':  // operator with exact matching between word1||word2||word3
                     $val = addslashes($val);
-                    $condition = "({$classField} REGEXP '{$val}' )";
+                    // $condition = "({$classField} REGEXP '{$val}' )";
+                    $condition = "({$classField} REGEXP '(^|\\\|)+{$val}(\\\||$)+' )";
                     break;
                     /* @since 1.3 */
                 case 'REGEXP': // operator with exact pattern matching. eg: ptrn= '%s[0-9]*'
@@ -277,6 +280,7 @@ class AdvSearchHooks {
                     $condition = "({$classField} {$oper} {$val})";
             }
         }
+
         return $condition;
     }
 
@@ -287,9 +291,104 @@ class AdvSearchHooks {
     }
 
     public function processConditions($andConditions, & $requests) {
+        $conditions = array(); 
+
+        foreach ($andConditions as $keyCondition => $valueCondition) {
+            $keyElts = array_map("trim", @explode(':', $keyCondition));
+            if (count($keyElts) == 1) {
+                $keyElts[1] = '=';
+            }
+
+            $keyCondition = implode(':', $keyElts);
+            $oper = strtoupper($keyElts[1]); // operator
+            // $ptrn = strtolower($keyElts[2]); // pattern
+            // pattern
+            $ptrn = !empty($valueCondition['pattern']) ?
+                    strtolower($valueCondition['pattern']) :
+                    ($oper == 'REGEXP' ? '%s' : '');
+
+            $classFieldElts = array_map("trim", @explode('.', $keyElts[0]));
+            $class = (count($classFieldElts) == 2) ? $classFieldElts[0] : '';
+            $class = trim($class, '`');
+            $field = (count($classFieldElts) == 2) ? $classFieldElts[1] : $classFieldElts[0];
+            $field = trim($field, '`');
+
+            if (empty($class)) {
+                $classField = $this->modx->escape($field);
+            } elseif ($class == 'tv') {
+                $classField = "`tvcv`.{$this->modx->escape('value')}";
+                $cvTbl = $this->modx->getTableName('modTemplateVarResource'); // site_tmplvar_contentvalues
+                $tvTbl = $this->modx->getTableName('modTemplateVar'); // site_tmplvars
+            } else {
+                $classField = "{$this->modx->escape($class)}.{$this->modx->escape($field)}";
+            }
+
+            if (is_array($valueCondition)) {
+                $tag = isset($valueCondition['key']) && !empty($valueCondition['key']) ? $valueCondition['key'] : '';
+                $typeValue = (!empty($valueCondition['method'])) ? strtolower($valueCondition['method']) : 'request';
+                $filtered = (!empty($valueCondition['ignoredValue'])) ? array_map("trim", @explode(',', $valueCondition['ignoredValue'])) : array();
+            } else {
+                $valueElts = array_map("trim", @explode(':', $valueCondition));
+                $tag = $valueElts[0];
+                $typeValue = (!empty($valueElts[1])) ? strtolower($valueElts[1]) : 'request';
+                $filtered = (!empty($valueElts[2])) ? array_map("trim", explode(',', $valueElts[2])) : array();
+            }
+
+            if ($typeValue == 'request' && !empty($tag) && isset($_REQUEST[$tag])) { // the value is provided par an http variable
+                if (is_array($_REQUEST[$tag])) {
+                    // multiple list
+                    $values = $_REQUEST[$tag];
+                    $orConditions = array();
+                    foreach ($values as $val) {
+                        $val = strip_tags($val);
+                        if (($val != '') && !in_array($val, $filtered)) {
+                            $requests[$tag][] = $val;
+                            $orConditions[] = $this->processValue($class, $classField, $oper, $ptrn, $val);
+                        }
+                    }
+                    if (count($orConditions)) {
+                        $orCondition = '(' . implode(' OR ', $orConditions) . ')';
+                        if ($class !== 'tv') {
+                            $conditions[] = $orCondition;
+                        } else {
+                            $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $orCondition);
+                        }
+                    }
+                } else {
+                    // single value
+                    $val = strip_tags($_REQUEST[$tag]);
+                    if (($val != '') && !in_array($val, $filtered)) {
+                        $requests[$tag] = $val;
+                        $processValue = $this->processValue($class, $classField, $oper, $ptrn, $val);
+                        if ($class != 'tv') {
+                            $conditions[] = $processValue;
+                        } else {
+                            $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $processValue);
+                        }
+                    }
+                }
+            } else {
+                // field:oper => CONST  (where CONST is a numeric or a string)
+                $processValue = $this->processValue($class, $classField, $oper, $ptrn, $tag);
+                if ($class !== 'tv') {
+                    $conditions[] = $processValue;
+                } else {
+                    $conditions[] = $this->processTvCondition($cvTbl, $tvTbl, $field, $processValue);
+                }
+            }
+        }
+        
+        return $conditions;
+    }
+    /**
+     * @deprecated since version 1.3
+     * @param array $andConditions
+     * @param array $requests
+     * @return type
+     */
+    public function processConditionsDeprecated($andConditions, & $requests) {
         $conditions = array();
         foreach ($andConditions as $keyCondition => $valueCondition) {
-
             $keyElts = array_map("trim", explode(':', $keyCondition));
             if (count($keyElts) == 1) {
                 $keyElts[1] = '=';
@@ -378,6 +477,7 @@ class AdvSearchHooks {
 
     public function setQueryHook(array $qhDeclaration = array()) {
         $requests = null;
+
         if (!empty($qhDeclaration)) {
 
             // queryHook version
@@ -399,6 +499,8 @@ class AdvSearchHooks {
                 if (!empty($val)) {
                     $this->queryHook['perPage'] = $val;
                     $requests[$tag] = $val;
+                } else {
+                    $this->queryHook['perPage'] = $tag;
                 }
             }
 
@@ -417,15 +519,22 @@ class AdvSearchHooks {
                 if ($this->search->config['withAjax']) {
                     $this->getVarRequest();
                 }
-                $andConditions = $this->processConditions($qhDeclaration['andConditions'], $requests);
+                if ($this->queryHook['version'] == '1.3') {
+                    $andConditions = $this->processConditions($qhDeclaration['andConditions'], $requests);
+                } else {
+                    $andConditions = $this->processConditionsDeprecated($qhDeclaration['andConditions'], $requests);
+                }
                 if (!empty($andConditions)) {
                     $this->queryHook['andConditions'] = $andConditions;
                 }
+                $this->queryHook['andConditionsRaw'] = $qhDeclaration['andConditions'];
             }
 
             // sortby
             if (!empty($qhDeclaration['sortby'])) {
                 $tag = $qhDeclaration['sortby'];
+                $this->queryHook['sortby'] = $tag;
+
                 if (is_array($_REQUEST[$tag])) {
                     // multiple list
                     $values = $_REQUEST[$tag];
@@ -458,6 +567,7 @@ class AdvSearchHooks {
                 $this->queryHook['requests'] = $requests;
             }
         }
+
         return $this->queryHook;
     }
 
