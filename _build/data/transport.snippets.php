@@ -1,9 +1,11 @@
 <?php
+
 /**
  * AdvSearch transport snippets
  * Copyright 2012 Coroico <coroico@wangba.fr>
  * @author Coroico <coroico@wangba.fr>
- * 28/11/2012
+ * @author goldsky <goldsky@virtudraft.com>
+ * 07/1/2016
  *
  * AdvSearch is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -25,48 +27,50 @@
  * @package advsearch
  * @subpackage build
  */
+if (!function_exists('getSnippetContent')) {
 
-if (! function_exists('getSnippetContent')) {
     function getSnippetContent($filename) {
         $o = file_get_contents($filename);
-        $o = str_replace('<?php','',$o);
-        $o = str_replace('?>','',$o);
+        $o = str_replace('<?php', '', $o);
+        $o = str_replace('?>', '', $o);
         $o = trim($o);
         return $o;
     }
+
 }
 $snippets = array();
 
-$snippets[1]= $modx->newObject('modSnippet');
-$snippets[1]->fromArray(array(
-    'id' => 1,
+$snippets['AdvSearchForm'] = $modx->newObject('modSnippet');
+$snippets['AdvSearchForm']->fromArray(array(
     'name' => 'AdvSearchForm',
-    'description' => 'AdvSearchForm snippet for AdvSearch.',
-    'snippet' => getSnippetContent($sources['source_core'].'/elements/snippets/advsearchform.snippet.php'),
-),'',true,true);
-$properties = include $sources['data'].'/properties/properties.advsearchform.php';
-$snippets[1]->setProperties($properties);
+    'description' => 'AdvSearchForm snippet to render search form.',
+    'snippet' => getSnippetContent($sources['source_core'] . '/elements/snippets/advsearchform.snippet.php'),
+        ), '', true, true);
+$properties = include $sources['data'] . '/properties/properties.advsearchform.php';
+$snippets['AdvSearchForm']->setProperties($properties);
 unset($properties);
 
 
-$snippets[2]= $modx->newObject('modSnippet');
-$snippets[2]->fromArray(array(
-    'id' => 2,
+$snippets['AdvSearch'] = $modx->newObject('modSnippet');
+$snippets['AdvSearch']->fromArray(array(
     'name' => 'AdvSearch',
-    'description' => 'AdvSearch snippet for AdvSearch.',
-    'snippet' => getSnippetContent($sources['source_core'].'/elements/snippets/advsearch.snippet.php'),
-),'',true,true);
-$properties = include $sources['data'].'/properties/properties.advsearch.php';
-$snippets[2]->setProperties($properties);
+    'description' => 'AdvSearch snippet to get the output.',
+    'snippet' => getSnippetContent($sources['source_core'] . '/elements/snippets/advsearch.snippet.php'),
+        ), '', true, true);
+$properties = include $sources['data'] . '/properties/properties.advsearch.php';
+$snippets['AdvSearch']->setProperties($properties);
 unset($properties);
 
 
-$snippets[3]= $modx->newObject('modSnippet');
-$snippets[3]->fromArray(array(
-    'id' => 3,
-    'name' => 'AdvSearchHelp',
-    'description' => 'AdvSearchHelp snippet for AdvSearch.',
-    'snippet' => getSnippetContent($sources['source_core'].'/elements/snippets/advsearchhelp.snippet.php'),
-),'',true,true);
+$snippets['AdvSearchGmapInfoWindow'] = $modx->newObject('modSnippet');
+$snippets['AdvSearchGmapInfoWindow']->fromArray(array(
+    'name' => 'AdvSearchGmapInfoWindow',
+    'description' => 'AdvSearch snippet for AdvSearch\'s googlemap infobox.',
+    'snippet' => getSnippetContent($sources['source_core'] . '/elements/snippets/advsearch.gmapinfowindow.snippet.php'),
+        ), '', true, true);
+$properties = include $sources['data'] . '/properties/properties.advsearch.gmapinfowindow.php';
+$snippets['AdvSearch']->setProperties($properties);
+unset($properties);
+
 
 return $snippets;

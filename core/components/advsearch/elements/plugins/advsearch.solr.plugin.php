@@ -1,7 +1,11 @@
 <?php
 
 /**
- * @todo: refactor this to use core/components/advsearch/model/solr/solrresource.class.php
+ * XXX:
+ * ONLY ENABLE THIS WHEN THE SOLR SEARCH ENGINE <http://lucene.apache.org/solr/>
+ * HAS BEEN INSTALLED AND RUNNING CORRECTLY ON YOUR SERVER!
+ *
+ * using {core_path}components/advsearch/model/solr/solrresource.class.php
  */
 
 ini_set('max_execution_time', 900);
@@ -65,14 +69,14 @@ switch ($modx->event->name) {
         $resourceArray = $newResource->toArray();
         $children = $solrResource->getDescendants($resourceArray['id']);
         $solrResource->addIndex($children);
-        
+
         break;
-    case 'OnResourceDelete':        
+    case 'OnResourceDelete':
         $resourceArray = $resource->toArray();
         $solrResource->removeIndex($resourceArray['id']);
         $children = $solrResource->getDescendants($resourceArray['id']);
         $solrResource->removeIndex($children);
-        
+
         break;
     case 'OnResourceUndelete':
         $resourceArray = $resource->toArray();

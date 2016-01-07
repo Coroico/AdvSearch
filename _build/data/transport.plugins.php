@@ -1,9 +1,11 @@
 <?php
+
 /**
  * AdvSearch transport plugins
  * Copyright 2012 Coroico <coroico@wangba.fr>
  * @author Coroico <coroico@wangba.fr>
- * 28/11/2012
+ * @author goldsky <goldsky@virtudraft.com>
+ * 07/1/2016
  *
  * AdvSearch is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -25,39 +27,57 @@
  * @package advsearch
  * @subpackage build
  */
+if (!function_exists('getPluginContent')) {
 
-if (! function_exists('getPluginContent')) {
     function getpluginContent($filename) {
         $o = file_get_contents($filename);
-        $o = str_replace('<?php','',$o);
-        $o = str_replace('?>','',$o);
+        $o = str_replace('<?php', '', $o);
+        $o = str_replace('?>', '', $o);
         $o = trim($o);
         return $o;
     }
+
 }
 $plugins = array();
 
-$plugins[1]= $modx->newObject('modplugin');
-$plugins[1]->fromArray(array(
-    'id' => 1,
-    'name' => 'MyPlugin1',
-    'description' => 'MyPlugin1 for AdvSearch.',
-    'plugincode' => getPluginContent($sources['source_core'].'/elements/plugins/myplugin1.plugin.php'),
-),'',true,true);
-$properties = include $sources['data'].'properties/properties.myplugin1.php';
-$plugins[1]->setProperties($properties);
-unset($properties);
+$plugins['AdvSearch'] = $modx->newObject('modPlugin');
+$plugins['AdvSearch']->fromArray(array(
+    'name' => 'AdvSearch',
+    'description' => 'AdvSearch to clear cache on its partition.',
+    'plugincode' => getPluginContent($sources['source_core'] . '/elements/plugins/advsearch.plugin.php'),
+        ), '', true, true);
+//$properties = include $sources['data'] . 'properties/properties.advsearch.plugin.php';
+//$plugins['AdvSearch']->setProperties($properties);
+//unset($properties);
+
+/* add plugin events */
+$events = include $sources['data'] . 'transport.advsearch.plugin.events.php';
+if (is_array($events) && !empty($events)) {
+    $plugins['AdvSearch']->addMany($events);
+    $modx->log(xPDO::LOG_LEVEL_INFO, 'Packaged in ' . count($events) . ' AdvSearch Plugin Events.');
+    flush();
+} else {
+    $modx->log(xPDO::LOG_LEVEL_ERROR, 'Could not find plugin AdvSearch Plugin Events!');
+}
 
 
-$plugins[2]= $modx->newObject('modplugin');
-$plugins[2]->fromArray(array(
-    'id' => 2,
-    'name' => 'MyPlugin2',
-    'description' => 'MyPlugin2 for AdvSearch.',
-    'plugincode' => getPluginContent($sources['source_core'].'/elements/plugins/myplugin2.plugin.php'),
-),'',true,true);
-$properties = include $sources['data'].'properties/properties.myplugin2.php';
-$plugins[2]->setProperties($properties);
-unset($properties);
+$plugins['AdvSearchSolr'] = $modx->newObject('modPlugin');
+$plugins['AdvSearchSolr']->fromArray(array(
+    'name' => 'AdvSearchSolr',
+    'description' => 'AdvSearch\'s plugin to handle Solr engine\'s indexer when changing the documents',
+    'plugincode' => getPluginContent($sources['source_core'] . '/elements/plugins/advsearch.solr.plugin.php'),
+        ), '', true, true);
+//$properties = include $sources['data'] . 'properties/properties.advsearchsolr.plugin.php';
+//$plugins['AdvSearchSolr']->setProperties($properties);
+//unset($properties);
+
+$events = include $sources['data'] . 'transport.advsearch.solr.plugin.events.php';
+if (is_array($events) && !empty($events)) {
+    $plugins['AdvSearchSolr']->addMany($events);
+    $modx->log(xPDO::LOG_LEVEL_INFO, 'Packaged in ' . count($events) . ' AdvSearchSolr Plugin Events.');
+    flush();
+} else {
+    $modx->log(xPDO::LOG_LEVEL_ERROR, 'Could not find plugin AdvSearchSolr Plugin Events!');
+}
 
 return $plugins;

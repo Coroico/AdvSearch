@@ -11,11 +11,11 @@
  * @tutorial	Some useful methods shared by AdvSearch's classes
  *
  */
-// AdvSearch version
-define('PKG_VERSION', '2.0.0');
-define('PKG_RELEASE', 'dev');
 
 class AdvSearch {
+
+    const VERSION = '2.0.0';
+    const RELEASE = 'dev';
 
     public $modx;
     public $config = array();
@@ -106,7 +106,7 @@ class AdvSearch {
             "MODx version" => $revoVersion['full_version'],
             "Php version" => phpversion(),
             "MySql version" => $this->getMysqlVersion(),
-            "AdvSearch version" => PKG_VERSION . ' ' . PKG_RELEASE,
+            "AdvSearch version" => self::VERSION . ' ' . self::RELEASE,
         );
         if ($this->dbg) {
             $this->modx->log(modX::LOG_LEVEL_DEBUG, '[AdvSearch] System environment: ' . print_r($systemInfo, true), '', __METHOD__);
