@@ -11,7 +11,7 @@ class SolrResource {
     public function __construct(modX $modx, $config) {
         $this->modx = & $modx;
         $this->config = array_merge(array(
-            'libraryPath' => $this->modx->getOption('assets_path') . 'libraries/'
+            'libraryPath' => $this->modx->getOption('core_path') . 'libraries/'
                 ), $config);
         $this->initSolr();
     }
