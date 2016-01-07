@@ -35,7 +35,6 @@ class AdvSearchResults extends AdvSearch {
 
     public function __construct(modX & $modx, array & $config = array()) {
         parent::__construct($modx, $config);
-        parent::loadDefaultConfigs();
     }
 
     /**

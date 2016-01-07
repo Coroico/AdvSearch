@@ -26,9 +26,7 @@ class AdvSearchRequest extends AdvSearch {
     protected $asr = null;
 
     public function __construct(modX & $modx, array $config = array()) {
-
         parent::__construct($modx, $config);
-        parent::loadDefaultConfigs();
     }
 
     /**

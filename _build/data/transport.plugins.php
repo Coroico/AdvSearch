@@ -60,7 +60,6 @@ if (is_array($events) && !empty($events)) {
     $modx->log(xPDO::LOG_LEVEL_ERROR, 'Could not find plugin AdvSearch Plugin Events!');
 }
 
-
 $plugins['AdvSearchSolr'] = $modx->newObject('modPlugin');
 $plugins['AdvSearchSolr']->fromArray(array(
     'name' => 'AdvSearchSolr',

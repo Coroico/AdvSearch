@@ -29,7 +29,6 @@ class AdvSearchForm extends AdvSearch {
         }
 
         parent::__construct($modx, $config);
-        parent::loadDefaultConfigs();
     }
 
     /**

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Mycomponent pre-install script
+ * AdvSearch pre-install script
  *
  * Copyright 2012 Coroico <coroico@wangba.fr>
  * @author Coroico <coroico@wangba.fr>

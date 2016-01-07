@@ -57,6 +57,7 @@ $hasCore = true;   /* Transfer the files in the core dir. */
 $hasSnippets = true;
 $hasChunks = true;
 $hasValidator = true; /* Run a validator before installing to check the pre-requisites */
+$hasResolver = true; /* Run a resolver after installing add on */
 
 /* Note: plugin events are connected to their plugins in the script
  * resolver (see _build/data/resolvers/install.script.php)
@@ -207,6 +208,14 @@ if ($hasValidator) {
     $modx->log(modX::LOG_LEVEL_INFO, 'Adding in Script Validator.');
     $vehicle->validate('php', array(
         'source' => $sources['validators'] . 'preinstall.script.php',
+    ));
+}
+
+/* package in script resolver if any */
+if ($hasResolver) {
+    $modx->log(modX::LOG_LEVEL_INFO,'Adding in Script Resolver.');
+    $vehicle->resolve('php',array(
+        'source' => $sources['resolvers'] . 'install.script.php',
     ));
 }
 

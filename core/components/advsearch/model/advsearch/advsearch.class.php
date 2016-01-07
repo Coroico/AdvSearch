@@ -15,7 +15,7 @@
 class AdvSearch {
 
     const VERSION = '2.0.0';
-    const RELEASE = 'dev';
+    const RELEASE = 'beta1';
 
     public $modx;
     public $config = array();
@@ -96,6 +96,7 @@ class AdvSearch {
 
         // load default lexicon
         $this->modx->lexicon->load('advsearch:default');
+        $this->loadDefaultConfigs();
     }
 
     protected function loadDefaultConfigs() {
