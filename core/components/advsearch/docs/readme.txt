@@ -10,7 +10,6 @@ Dynamic content search add-on that supports results highlighting, faceted search
 Partly based on AjaxSearch for Evolution
 
 See AdvSearch documentations in core/components/advsearch/docs/
-Discover addon demonstrations at www.revo.wangba.fr
 
 Thanks for using AdvSearch!
 
