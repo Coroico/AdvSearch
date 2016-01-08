@@ -39,6 +39,14 @@ $success = true;
 $modx->log(xPDO::LOG_LEVEL_INFO, 'Running PHP Resolver.');
 switch ($options[xPDOTransport::PACKAGE_ACTION]) {
     case xPDOTransport::ACTION_INSTALL:
+        $pluginObj = $modx->getObject('modPlugin', array('name' => 'AdvSearchSolr'));
+        if ($pluginObj) {
+            $pluginObj->set('disabled', 1);
+            $pluginObj->save();
+        }
+
+        $success = true;
+        break;
     case xPDOTransport::ACTION_UPGRADE:
         $advsearch = $modx->getService('advsearch', 'AdvSearch', MODX_CORE_PATH . 'components/advsearch/model/advsearch/');
         $pluginObj = $modx->getObject('modPlugin', array('name' => 'AdvSearchSolr'));

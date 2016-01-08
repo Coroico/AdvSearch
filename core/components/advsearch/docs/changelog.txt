@@ -1,6 +1,10 @@
 Changelog for AdvSearch
 
-AdvSearch 2.0.0-beta1
+AdvSearch 2.0.0-beta2 (January 08, 2016)
+-------------------
+- [#82] fix installation resolver
+
+AdvSearch 2.0.0-beta1 (January 08, 2016)
 -------------------
 - apply placeholder's prefix in all chunks
 - major refactor of class and controller files
