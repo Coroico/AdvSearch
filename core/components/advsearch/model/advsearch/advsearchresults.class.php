@@ -354,14 +354,21 @@ class AdvSearchResults extends AdvSearch {
         $idx = ($this->page - 1) * $this->config['perPage'] + 1;
         foreach ($results as $result) {
             if ($this->nbExtracts && count($this->extractFields)) {
-                $text = '';
+                $all_extracts = [];
                 foreach ($this->extractFields as $extractField) {
-                    $text .= "{$this->processElementTags($result[$extractField])}";
+                    $text = $this->processElementTags($result[$extractField]);
+                    $extracts = $this->_getExtracts(
+                        $text, $this->nbExtracts, $this->config['extractLength'], $this->searchTerms, $this->config['extractTpl'], $ellipsis = '...'
+                    );
+                    $all_extracts = array_merge( $all_extracts, $extracts );
+                    if ( count($all_extracts) > $this->nbExtracts ) {
+                        array_splice($all_extracts, $this->nbExtracts, (count($all_extracts) - $this->nbExtracts));
+                    }
+                    if ( count( $all_extracts ) == $this->nbExtracts ) {
+                        break;
+                    }
                 }
-
-                $extracts = $this->_getExtracts(
-                    $text, $this->nbExtracts, $this->config['extractLength'], $this->searchTerms, $this->config['extractTpl'], $ellipsis = '...'
-                );
+                $extracts = implode( '', $all_extracts );
             } else {
                 $extracts = '';
             }
@@ -741,7 +748,7 @@ class AdvSearchResults extends AdvSearch {
      * @param array $searchTerms The searched terms
      * @param string $tpl The template name for extract
      * @param string $ellipsis The string to use as ellipsis
-     * @return string Returns extracts output
+     * @return string[] Returns extracts
      * @tutorial this algorithm search several extracts for several search terms
      * 		if some extracts intersect then they are merged. Searchterm could be
      *      a lucene regexp expression using ? or *
@@ -754,7 +761,7 @@ class AdvSearchResults extends AdvSearch {
         $text = trim(preg_replace('/\s+/', ' ', $this->sanitize($text)));
         $textLength = mb_strlen($text);
         if (empty($text)) {
-            return '';
+            return [];
         }
 
         $trimchars = "\t\r\n -_()!~?=+/*\\,.:;\"'[]{}`&";
@@ -864,7 +871,7 @@ class AdvSearchResults extends AdvSearch {
             }
         }
 
-        $output = '';
+        $output = [];
         $highlightTag = $this->config['highlightTag'];
         $highlightClass = $this->config['highlightClass'];
 
@@ -879,7 +886,7 @@ class AdvSearchResults extends AdvSearch {
                 'extract' => $extracts[$i]['etcLeft'] . $extract . $extracts[$i]['etcRight']
             );
             $extractPh = $this->setPlaceholders($extractPh, $this->config['placeholderPrefix']);
-            $output .= $this->processElementTags($this->parseTpl($tpl, $extractPh));
+            $output[] = $this->processElementTags($this->parseTpl($tpl, $extractPh));
         }
 
         return $output;
