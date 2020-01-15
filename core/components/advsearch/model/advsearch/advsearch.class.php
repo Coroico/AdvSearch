@@ -719,7 +719,7 @@ class AdvSearch {
             if (empty($rank)) {
                 $rank = ($key + 1);
             }
-            $string = preg_replace('/(\s*)(' . $pattern . ')(\s*)/i', '<' . $tag . ' class="' . $class . ' ' . $class . '-' . $rank . '">$0</' . $tag . '>', $string);
+            $string = preg_replace('/(\s*)(' . $pattern . ')(\s*)/i', '$1<' . $tag . ' class="' . $class . ' ' . $class . '-' . $rank . '">$2</' . $tag . '>$3', $string);
         }
 
         return $string;
