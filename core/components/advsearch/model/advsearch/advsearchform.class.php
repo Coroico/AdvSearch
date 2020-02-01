@@ -121,7 +121,7 @@ class AdvSearchForm extends AdvSearch {
             'method' => $this->config['method'],
             'landing' => $this->config['landing'],
             'asId' => $this->config['asId'],
-            'searchValue' => $this->searchString,
+            'searchValue' => htmlentities( $this->searchString ),
             'searchIndex' => $this->config['searchIndex'],
             'helpLink' => $helpLink,
             'liveSearch' => $this->config['liveSearch'],
